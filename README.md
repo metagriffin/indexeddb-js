@@ -103,7 +103,7 @@ request.run = function() {
 
   // register an error handler for any error on the current db
   db.onerror = function(event) {
-    console.log('DATABASE ERROR: ' + event.target.result.error);
+    console.log('DATABASE ERROR: ' + event.target.error);
   };
 
   // fetch the record with id "1" in store "data"
@@ -118,13 +118,15 @@ request.run = function() {
 
       // and now add a couple new records (overwriting it if the key
       // already exists) with the same 'value' (so we can play with cursors)
-      store.put({id: '2', value: 'another object'}).onsucces = function(event) {
-        console.log('added another record');
+      store.put({id: '2', value: 'another object'}).onsuccess = function(event) {
+        store.put({id: 3, value: 'another object'}).onsuccess = function(event) {
+          console.log('added two more records');
 
-        // we're getting pretty deeply nested here... let's pop out
-        // and use the index
-        play_with_the_index_and_cursors();
+          // we're getting pretty deeply nested here... let's pop out
+          // and use the index
+          play_with_the_index_and_cursors();
 
+        };
       };
     };
   };
@@ -135,11 +137,12 @@ request.run = function() {
 
     console.log('all objects with the "value" field set to "another object":');
 
-    index.openCursor('another object').onsucces = function(event) {
+    index.openCursor('another object').onsuccess = function(event) {
       var cursor = event.target.result;
       if ( ! cursor )
         return;
       console.log('  - ' + JSON.stringify(cursor.value));
+      cursor.continue();
     };
 
   };
