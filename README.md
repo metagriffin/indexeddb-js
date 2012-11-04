@@ -154,12 +154,21 @@ request.run = function() {
 };
 ```
 
+The output on the console from the above script should be:
+
+    record: {"id":1,"value":"my-first-item"}
+    deleted the record
+    added two more records
+    all objects with the "value" field set to "another object":
+      - {"id":"2","value":"another object"}
+      - {"id":3,"value":"another object"}
+
 Note that `jsindexeddb` implements the Indexed Database API as
 accurately as possible, so just
 [google](http://lmgtfy.com/?q=indexeddb) for the specification and
 many good tutorials. My favorite:
 
-* [https://developer.mozilla.org/en-US/docs/IndexedDB/Using_IndexedDB]
+* https://developer.mozilla.org/en-US/docs/IndexedDB/Using_IndexedDB
 
 Tests
 =====
