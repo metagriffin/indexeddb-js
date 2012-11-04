@@ -86,7 +86,7 @@ var request   = indexedDB.open('MyDatabase');
 var db        = null;
 
 request.onerror = function(event) {
-  console.log('ERROR: could not open database: ' + event.target.result.error);
+  console.log('ERROR: could not open database: ' + event.target.error);
 };
 
 request.onupgradeneeded = function(event) {
