@@ -14,7 +14,7 @@
     "url":  "git://github.com/metagriffin/jsindexeddb.git"
   },
   "main":           "src/jsindexeddb.js",
-  "version":        "0.0.4",
+  "version":        "0.0.5",
   "dependencies": {
     "amdefine":     ">=0.0.4",
     "underscore":   ">=1.4.2"

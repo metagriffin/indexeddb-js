@@ -648,8 +648,9 @@ define(['underscore'], function(_) {
     this._type   = driverName;
     this._driver = driverInstance;
 
-    this.vendor  = 'jssyncml';
-    this.version = '0.0.1';
+    this.vendor  = 'jsindexeddb';
+    // TODO: pull this dynamically from package.json somehow?...
+    this.version = '0.0.5';
 
     //-------------------------------------------------------------------------
     this.open = function(name, version) {
