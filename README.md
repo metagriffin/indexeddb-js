@@ -67,6 +67,9 @@ A quick example of how to use `jsindexeddb`:
 
 ``` js
 
+// assuming modules 'sqlite3' and 'jsindexeddb' have been loaded
+// in your environment-specific way, e.g. with `define` or `require`.
+
 // of course, if you are being nice to the community, you would wrap the
 // following in a call to "define()" and would share your code as a
 // non-environment-specific javascript module.  see
