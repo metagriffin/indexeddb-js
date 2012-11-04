@@ -15,9 +15,9 @@ This module is not intended to provide a "production" level
 implementation: it is a "stop-gap" measure while we (the community)
 wait for a more robust/native implementation for node-js. As such, it
 was created to allow unit-testing of other projects (such as
-[jssyncml](https://npmjs.org/package/jssyncml)), which require that you
-provide access to an indexedDB API, but need to be unit-tested in any
-environment, including non-browser environments.
+[jssyncml](https://npmjs.org/package/jssyncml) and others), which
+require that you provide access to an indexedDB API, but need to be
+unit-tested in any environment, including non-browser environments.
 
 If time permits, and/or others are willing to contribute, it may
 one day graduate to a less "stop-gap" measure.
