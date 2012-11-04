@@ -1,9 +1,12 @@
 jsindexeddb
 ===========
 
-Welcome to the `jsindexeddb` javascript/node-js module: it is a
-pure-javascript implementation of the Indexed Database API (aka
-indexedDB).
+Welcome to the `jsindexeddb` javascript/node-js module: a
+pure-javascript stop-gap implementation of the IndexedDB (aka. Indexed
+Database) API. Being "stop-gap", it currently does not implement all
+IndexedDB API features and can only use
+[sqlite3](https://npmjs.org/package/sqlite3) as a data storage
+back-end.
 
 Just To Be Clear
 ================
@@ -12,8 +15,9 @@ This module is not intended to provide a "production" level
 implementation: it is a "stop-gap" measure while we (the community)
 wait for a more robust/native implementation for node-js. As such, it
 was created to allow unit-testing of other projects (such as
-jssyncml), which require an indexedDB API, but need to be unit-tested
-in non-browser environments as well.
+[jssyncml](https://npmjs.org/package/jssyncml), which require that you
+provide access to an indexedDB API, but need to be unit-tested in any
+environment, including non-browser environments.
 
 If time permits, and/or others are willing to contribute, it may
 one day graduate to a less "stop-gap" measure.
