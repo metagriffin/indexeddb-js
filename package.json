@@ -1,0 +1,26 @@
+{
+  "name":           "jsindexeddb",
+  "author":         "metagriffin <metagriffin@uberdev.org>",
+  "description":    "",
+  "homepage":       "https://github.com/metagriffin/jsindexeddb",
+  "keywords": [
+    "indexeddb",
+    "javascript",
+    "sqlite3",
+    "unit testing"
+  ],
+  "repository": {
+    "type": "git",
+    "url":  "git://github.com/metagriffin/jsindexeddb.git"
+  },
+  "main":           "src/jsindexeddb.js",
+  "version":        "0.0.1",
+  "dependencies": {
+    "amdefine":     ">=0.0.4",
+    "underscore":   ">=1.4.2"
+  },
+  "devDependencies": {
+    "sqlite3":      ">=2.1.1",
+    "jasmine-node": ">=1.0.26"
+  }
+}
