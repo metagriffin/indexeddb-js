@@ -114,8 +114,8 @@ define(['underscore'], function(_) {
       var req = new Request();
       this._getAll(req, value, function(err, objects) {
         if ( err )
-          return  req._error(this, 'indexeddb.Index.iG.10',
-                             'failed to fetch object by index: ' + err);
+          return req._error(this, 'indexeddb.Index.iG.10',
+                            'failed to fetch object by index: ' + err);
         if ( objects.length <= 0 )
           return req._error(this, 'indexeddb.Index.iG.20',
                             'no such index name in object store');
@@ -162,7 +162,6 @@ define(['underscore'], function(_) {
 
     // todo: implement:
     // this.count = function(key) {};
-    // this.getKey = function(key) {};
 
     return this;
   };

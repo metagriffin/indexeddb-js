@@ -6,10 +6,10 @@ lib-cov
 *.out
 *.pid
 *.gz
-
 pids
 logs
 results
-
 node_modules
 npm-debug.log
+setenv
+test.db
