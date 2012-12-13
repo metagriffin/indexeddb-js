@@ -325,7 +325,7 @@ define(['underscore'], function(_) {
     this._extractValue = function(object, path) {
       var walker = function(object, path) {
         if ( _.isArray(path) )
-          return _.map(path, function(e) { return walker(e, object); }).join('');
+          return _.map(path, function(e) { return walker(object, e); }).join('');
         var idx = path.indexOf('.');
         if ( idx == -1 )
           return object[path];
