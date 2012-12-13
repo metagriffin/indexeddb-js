@@ -650,7 +650,7 @@ define(['underscore'], function(_) {
 
     this.vendor  = 'indexeddb-js';
     // TODO: pull this dynamically from package.json somehow?...
-    this.version = '0.0.8';
+    this.version = '0.0.9';
 
     //-------------------------------------------------------------------------
     this.open = function(name, version) {
