@@ -1,7 +1,7 @@
-jsindexeddb
-===========
+indexeddb-js
+============
 
-Welcome to the `jsindexeddb` javascript/node-js module: a
+Welcome to the `indexeddb-js` javascript/node-js module: a
 pure-javascript stop-gap implementation of the IndexedDB (aka. Indexed
 Database) API. Being "stop-gap", it currently does not implement all
 IndexedDB API features and can only use
@@ -62,16 +62,16 @@ Installation
 
 This is the easy part, provided you have ``npm`` installed:
 
-    npm install jsindexeddb sqlite3
+    npm install indexeddb-js sqlite3
 
 Usage
 =====
 
-A quick example of how to use `jsindexeddb`:
+A quick example of how to use `indexeddb-js`:
 
 ``` js
 
-// assuming modules 'sqlite3' and 'jsindexeddb' have been loaded
+// assuming modules 'sqlite3' and 'indexeddb-js' have been loaded
 // in your environment-specific way, e.g. with `define` or `require`.
 
 // of course, if you are being nice to the community, you would wrap the
@@ -81,7 +81,7 @@ A quick example of how to use `jsindexeddb`:
 // for details... ;-)
 
 var engine    = new sqlite3.Database(':memory:');
-var indexedDB = new jsindexeddb.indexedDB('sqlite3', engine);
+var indexedDB = new indexeddbjs.indexedDB('sqlite3', engine);
 var request   = indexedDB.open('MyDatabase');
 var db        = null;
 
@@ -163,7 +163,7 @@ The output on the console from the above script should be:
       - {"id":"2","value":"another object"}
       - {"id":3,"value":"another object"}
 
-Note that `jsindexeddb` implements the Indexed Database API as
+Note that `indexeddb-js` implements the Indexed Database API as
 accurately as possible, so just
 [google](http://lmgtfy.com/?q=indexeddb) for the specification and
 many good tutorials. My favorite:
@@ -173,8 +173,8 @@ many good tutorials. My favorite:
 Tests
 =====
 
-`jsindexeddb` uses [jasmine](http://pivotal.github.com/jasmine/) for
-the testing infrastructure; in the jsindexeddb directory:
+`indexeddb-js` uses [jasmine](http://pivotal.github.com/jasmine/) for
+the testing infrastructure; in the indexeddb-js directory:
 
     npm install jasmine-node
     make tests

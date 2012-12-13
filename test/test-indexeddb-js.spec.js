@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 //-----------------------------------------------------------------------------
 // file: $Id$
-// desc: unit test for the jsindexeddb module
+// desc: unit test for the indexeddb-js module
 // auth: metagriffin <metagriffin@uberdev.org>
 // date: 2012/10/13
 // copy: (C) CopyLoose 2012 UberDev <hardcore@uberdev.org>, No Rights Reserved.
@@ -14,10 +14,10 @@ if ( typeof(define) !== 'function' )
 define([
   'underscore',
   'sqlite3',
-  '../src/jsindexeddb'
-], function(_, sqlite3, jsindexeddb) {
+  '../src/indexeddb-js'
+], function(_, sqlite3, indexeddbjs) {
 
-  describe('jsindexeddb', function() {
+  describe('indexeddb-js', function() {
 
     var done = false;
 
@@ -28,7 +28,7 @@ define([
 
       var sdb = new sqlite3.Database('./test.db');
       // var sdb = new sqlite3.Database(':memory:');
-      var idb = new jsindexeddb.indexedDB('sqlite3', sdb);
+      var idb = new indexeddbjs.indexedDB('sqlite3', sdb);
 
       var req = idb.open('testdb');
       var db  = null;

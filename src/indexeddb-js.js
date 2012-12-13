@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 //-----------------------------------------------------------------------------
 // file: $Id$
-// lib:  jsindexeddb
+// lib:  indexeddb-js
 // desc: provides basic indexedDB access to sqlite3 in javascript/node-js.
 //
 //       JUST TO BE CLEAR: this module is not intended to provide a
@@ -648,9 +648,9 @@ define(['underscore'], function(_) {
     this._type   = driverName;
     this._driver = driverInstance;
 
-    this.vendor  = 'jsindexeddb';
+    this.vendor  = 'indexeddb-js';
     // TODO: pull this dynamically from package.json somehow?...
-    this.version = '0.0.5';
+    this.version = '0.0.8';
 
     //-------------------------------------------------------------------------
     this.open = function(name, version) {

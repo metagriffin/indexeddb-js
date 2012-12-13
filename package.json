@@ -1,16 +1,16 @@
 {
-  "name":           "jsindexeddb",
-  "description":    "A pure-javascript stop-gap implementation of the IndexedDB (aka. Indexed Database) API using sqlite3 as a storage engine.",
+  "name":           "indexeddb-js",
+  "description":    "A pure javascript stop-gap implementation of the IndexedDB (aka. Indexed Database) API using sqlite3 as a storage engine.",
   "version":        "0.0.8",
-  "main":           "src/jsindexeddb.js",
-  "author":         "metagriffin <metagriffin@uberdev.org>",
-  "homepage":       "https://github.com/metagriffin/jsindexeddb",
+  "main":           "src/indexeddb-js.js",
+  "author":         "metagriffin <mg.npmjs@uberdev.org>",
+  "homepage":       "https://github.com/metagriffin/indexeddb-js",
   "repository": {
     "type": "git",
-    "url":  "git://github.com/metagriffin/jsindexeddb.git"
+    "url":  "git://github.com/metagriffin/indexeddb-js.git"
   },
   "bugs": {
-    "url": "https://github.com/metagriffin/jsindexeddb/issues"
+    "url": "https://github.com/metagriffin/indexeddb-js/issues"
   },
   "dependencies": {
     "amdefine":     ">=0.0.4",
