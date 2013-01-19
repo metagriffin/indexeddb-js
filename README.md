@@ -81,8 +81,8 @@ A quick example of how to use `indexeddb-js`:
 // for details... ;-)
 
 var engine    = new sqlite3.Database(':memory:');
-var indexedDB = new indexeddbjs.indexedDB('sqlite3', engine);
-var request   = indexedDB.open('MyDatabase');
+var scope     = indexeddbjs.makeScope('sqlite3', engine);
+var request   = scope.indexedDB.open('MyDatabase');
 var db        = null;
 
 request.onerror = function(event) {
@@ -94,7 +94,12 @@ request.onupgradeneeded = function(event) {
   var store = db.createObjectStore('data', {keyPath: 'id'});
   store.createIndex('value', 'value', {unique: false});
   store.add({id: 1, value: 'my-first-item'}).onsuccess = function() {
-    request.run();
+    // TODO: there is currently a limitation in indexeddb-js that
+    // does not allow it to know when an upgrade has been finished,
+    // and therefore you must tell it by calling "event.onupgradecomplete()"
+    // (otherwise ``request.onsuccess()`` will not be called).
+    if ( event.onupgradecomplete )
+      event.onupgradecomplete();
   };
 };
 
@@ -138,10 +143,11 @@ request.run = function() {
   var play_with_the_index_and_cursors = function() {
 
     var index = db.transaction(null, 'readwrite').objectStore('data').index('value');
+    var range = scope.IDBKeyRange.only('another object');
 
     console.log('all objects with the "value" field set to "another object":');
 
-    index.openCursor('another object').onsuccess = function(event) {
+    index.openCursor(range).onsuccess = function(event) {
       var cursor = event.target.result;
       if ( ! cursor )
         return;

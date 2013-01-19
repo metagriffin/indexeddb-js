@@ -304,6 +304,116 @@ define([
       });
     });
 
+
+    //-------------------------------------------------------------------------
+    it('runs the example program from the documentation', function(done) {
+
+      // TODO: it would be *great* if i could auto-extract the
+      // example from README.md instead of needing to duplicate it here...
+
+      var output = '';
+      var _console = console;
+      var console = {
+        log: function(msg) {
+          output += msg + '\n';
+        }
+      }
+      var final_check = function() {
+        expect(output).toEqual(
+          'record: {"id":1,"value":"my-first-item"}\n'
+            + 'deleted the record\n'
+            + 'added two more records\n'
+            + 'all objects with the "value" field set to "another object":\n'
+            + '  - {"id":"2","value":"another object"}\n'
+            + '  - {"id":3,"value":"another object"}\n'
+        );
+        done();
+      };
+
+
+var engine    = new sqlite3.Database(':memory:');
+var scope     = indexeddbjs.makeScope('sqlite3', engine);
+var request   = scope.indexedDB.open('MyDatabase');
+var db        = null;
+
+request.onerror = function(event) {
+  console.log('ERROR: could not open database: ' + event.target.error);
+  done();
+};
+
+request.onupgradeneeded = function(event) {
+  db = event.target.result;
+  var store = db.createObjectStore('data', {keyPath: 'id'});
+  store.createIndex('value', 'value', {unique: false});
+  store.add({id: 1, value: 'my-first-item'}).onsuccess = function() {
+    // TODO: there is currently a limitation in indexeddb-js that
+    // does not allow it to know when an upgrade has been finished,
+    // and therefore you must tell it by calling "event.onupgradecomplete()"
+    // (otherwise ``request.onsuccess()`` will not be called).
+    if ( event.onupgradecomplete )
+      event.onupgradecomplete();
+  };
+};
+
+request.onsuccess = function(event) {
+  db = event.target.result;
+  request.run();
+};
+
+request.run = function() {
+
+  // register an error handler for any error on the current db
+  db.onerror = function(event) {
+    console.log('DATABASE ERROR: ' + event.target.error);
+  };
+
+  // fetch the record with id "1" in store "data"
+  var store = db.transaction(null, 'readwrite').objectStore('data');
+  store.get('1').onsuccess = function(event) {
+    var obj = event.target.result;
+    console.log('record: ' + JSON.stringify(obj));
+
+    // now delete it
+    store.delete('1').onsuccess = function(event) {
+      console.log('deleted the record');
+
+      // and now add a couple new records (overwriting it if the key
+      // already exists) with the same 'value' (so we can play with cursors)
+      store.put({id: '2', value: 'another object'}).onsuccess = function(event) {
+        store.put({id: 3, value: 'another object'}).onsuccess = function(event) {
+          console.log('added two more records');
+
+          // we're getting pretty deeply nested here... let's pop out
+          // and use the index
+          play_with_the_index_and_cursors();
+
+        };
+      };
+    };
+  };
+
+  var play_with_the_index_and_cursors = function() {
+
+    var index = db.transaction(null, 'readwrite').objectStore('data').index('value');
+    var range = scope.IDBKeyRange.only('another object');
+
+    console.log('all objects with the "value" field set to "another object":');
+
+    index.openCursor(range).onsuccess = function(event) {
+      var cursor = event.target.result;
+      if ( ! cursor )
+        return final_check();
+
+      console.log('  - ' + JSON.stringify(cursor.value));
+      cursor.continue();
+    };
+
+  };
+
+};
+
+    });
+
   });
 });
 

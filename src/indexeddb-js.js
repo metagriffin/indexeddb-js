@@ -705,7 +705,7 @@ define(['underscore'], function(_) {
 
     this.vendor  = 'indexeddb-js';
     // TODO: pull this dynamically from package.json somehow?...
-    this.version = '0.0.10';
+    this.version = '0.0.11';
 
     //-------------------------------------------------------------------------
     this.open = function(name, version) {
@@ -732,13 +732,12 @@ define(['underscore'], function(_) {
   exports.initScope = function(driverName, driverInstance, scope) {
     scope.indexedDB = new exports.indexedDB(driverName, driverInstance);
     scope.IDBKeyRange = IDBKeyRange;
+    return scope;
   };
 
   //---------------------------------------------------------------------------
   exports.makeScope = function(driverName, driverInstance) {
-    var ret = {};
-    exports.initScope(driverName, driverInstance, ret);
-    return ret;
+    return exports.initScope(driverName, driverInstance, {});
   };
 
   return exports;
