@@ -80,6 +80,49 @@ define(['underscore'], function(_) {
   };
 
   //---------------------------------------------------------------------------
+  var IDBKeyRange = function(lower, upper, lowerOpen, upperOpen) {
+    // -- read-only attributes...
+    this.lower     = lower;
+    this.upper     = upper;
+    this.lowerOpen = !! lowerOpen;
+    this.upperOpen = !! upperOpen;
+    return this;
+  };
+
+  //---------------------------------------------------------------------------
+  IDBKeyRange.only = function(value) {
+    return new IDBKeyRange(value, value, false, false);
+  };
+  IDBKeyRange.lowerBound = function(value, open) {
+    return new IDBKeyRange(value, undefined, open, false);
+  };
+  IDBKeyRange.upperBound = function(value, open) {
+    return new IDBKeyRange(undefined, value, false, open);
+  };
+  IDBKeyRange.bound = function(lower, upper, lowerOpen, upperOpen) {
+    return new IDBKeyRange(lower, upper, lowerOpen, upperOpen);
+  };
+
+  //---------------------------------------------------------------------------
+  IDBKeyRange.prototype.check = function(value) {
+    if ( this.lower !== undefined )
+    {
+      if ( value == this.lower )
+        return ! this.lowerOpen;
+      if ( value < this.lower )
+        return false;
+    }
+    if ( this.upper !== undefined )
+    {
+      if ( value == this.upper )
+        return ! this.upperOpen;
+      if ( value > this.upper )
+        return false;
+    }
+    return true;
+  };
+
+  //---------------------------------------------------------------------------
   var Index = function(store, name) {
     // TODO: implement these attributes...
     // this.keyPath = ...;
@@ -112,7 +155,7 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this._get = function(value, key) {
       var req = new Request();
-      this._getAll(req, value, function(err, objects) {
+      this._getAll(req, IDBKeyRange.only(value), function(err, objects) {
         if ( err )
           return req._error(this, 'indexeddb.Index.iG.10',
                             'failed to fetch object by index: ' + err);
@@ -127,7 +170,7 @@ define(['underscore'], function(_) {
     };
 
     //-------------------------------------------------------------------------
-    this._getAll = function(request, value, cb, object) {
+    this._getAll = function(request, range, cb, object) {
       var self = this;
       store._getAll(request, null, function(err, objects) {
         if ( err )
@@ -137,9 +180,10 @@ define(['underscore'], function(_) {
         if ( index == undefined )
           return request._error(this, 'indexeddb.Index.iGA.20',
                             'no such index name in object store');
+        if ( ! range )
+          return cb.call(object, null, objects);
         cb.call(object, null, _.filter(objects, function(e) {
-          // todo: implement full range spec, not just an index value
-          return value == store._extractValue(e.value, index.keyPath);
+          return range.check(store._extractValue(e.value, index.keyPath));
         }));
       });
     };
@@ -173,6 +217,9 @@ define(['underscore'], function(_) {
     this.direction   = direction || 'next';
     // todo: implement these attributes...
     // this.primaryKey  = ...;
+
+    if ( range && ! ( range instanceof IDBKeyRange ) )
+      range = IDBKeyRange.only(range);
 
     // -- private attributes
     this._range    = range;
@@ -579,9 +626,13 @@ define(['underscore'], function(_) {
               self.version  = cur;
               self._meta = uj(rows[0].c_meta);
               // todo: load stores?...
-              if ( ! verOk )
-                return request.onupgradeneeded(new Event(request));
-              return request.onsuccess(new Event(request));
+              var ret = new Event(request);
+              if ( verOk )
+                return request.onsuccess(ret);
+              // TODO: solve this "onupgradecomplete" hack... it
+              // requires that we support transactions! ugh.
+              ret.onupgradecomplete = function() { request.onsuccess(ret); };
+              return request.onupgradeneeded(ret);
             }
             self.version = self.version || 0;
             sdb.run(
@@ -592,7 +643,11 @@ define(['underscore'], function(_) {
                   return request._error(
                     null, 'indexeddb.Database.iL.30',
                     'could not insert new database: ' + err);
-                return request.onupgradeneeded(new Event(request));
+                var ret = new Event(request);
+                // TODO: solve this "onupgradecomplete" hack... it
+                // requires that we support transactions! ugh.
+                ret.onupgradecomplete = function() { request.onsuccess(ret); };
+                return request.onupgradeneeded(ret);
               })
           });
       }, this);
@@ -650,7 +705,7 @@ define(['underscore'], function(_) {
 
     this.vendor  = 'indexeddb-js';
     // TODO: pull this dynamically from package.json somehow?...
-    this.version = '0.0.9';
+    this.version = '0.0.10';
 
     //-------------------------------------------------------------------------
     this.open = function(name, version) {
@@ -671,6 +726,19 @@ define(['underscore'], function(_) {
     // this.cmp = function(first, second) {};
 
     return this;
+  };
+
+  //---------------------------------------------------------------------------
+  exports.initScope = function(driverName, driverInstance, scope) {
+    scope.indexedDB = new exports.indexedDB(driverName, driverInstance);
+    scope.IDBKeyRange = IDBKeyRange;
+  };
+
+  //---------------------------------------------------------------------------
+  exports.makeScope = function(driverName, driverInstance) {
+    var ret = {};
+    exports.initScope(driverName, driverInstance, ret);
+    return ret;
   };
 
   return exports;
