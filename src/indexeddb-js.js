@@ -157,6 +157,24 @@ define(['underscore'], function(_) {
     };
 
     //-------------------------------------------------------------------------
+    this.count = function(key) {
+      var req = new Request();
+      if ( key && ! ( key instanceof IDBKeyRange ) )
+        key = IDBKeyRange.only(key);
+      // todo: this should really be optimized to tell _getAll to count
+      //       the objects, not actually fetch them...
+      this._getAll(req, key, function(err, objects) {
+        if ( err )
+          return req._error(this, 'indexeddb.Index.Ct.10',
+                            'failed to fetch objects: ' + err);
+        req.result = objects.length;
+        if ( req.onsuccess )
+          req.onsuccess(new Event(req));
+      });
+      return req;
+    };
+
+    //-------------------------------------------------------------------------
     this._get = function(value, key) {
       var req = new Request();
       this._getAll(req, IDBKeyRange.only(value), function(err, objects) {
@@ -207,9 +225,6 @@ define(['underscore'], function(_) {
       req.cursor.continue();
       return req;
     };
-
-    // todo: implement:
-    // this.count = function(key) {};
 
     return this;
   };
@@ -510,6 +525,24 @@ define(['underscore'], function(_) {
     };
 
     //-------------------------------------------------------------------------
+    this.count = function(key) {
+      var req = new Request();
+      if ( key && ! ( key instanceof IDBKeyRange ) )
+        key = IDBKeyRange.only(key);
+      // todo: this should really be optimized to tell _getAll to count
+      //       the objects, not actually fetch them...
+      this._getAll(req, key, function(err, objects) {
+        if ( err )
+          return req._error(this, 'indexeddb.Store.Ct.10',
+                            'failed to fetch objects: ' + err);
+        req.result = objects.length;
+        if ( req.onsuccess )
+          req.onsuccess(new Event(req));
+      });
+      return req;
+    };
+
+    //-------------------------------------------------------------------------
     this._getAll = function(request, range, cb, object) {
       this._withEngine(request, function(err, sdb) {
         if ( err )
@@ -556,8 +589,6 @@ define(['underscore'], function(_) {
     };
 
     // todo: implement:
-    // this.clear = function() {};
-    // this.count = function(key) {};
     // this.deleteIndex = function(key) {};
 
   };

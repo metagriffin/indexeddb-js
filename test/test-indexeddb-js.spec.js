@@ -217,6 +217,63 @@ define([
     });
 
     //-------------------------------------------------------------------------
+    it('implements `Store.count`', function(done) {
+      createTestDb(function(err, db, scope) {
+        expect(err).toBeFalsy();
+        if ( err )
+          return done();
+        db.onerror = function(event) {
+          // don't expect any errors to bubble up
+          expect('db.onerror').toBe('never called');
+          return done();
+        };
+        var store = db.transaction().objectStore('data');
+        store.count().onsuccess = function(event) {
+          expect(event.target.result).toBe(3);
+          // todo: when Store._getAll supports key ranges...
+          // store.count(scope.IDBKeyRange.bound(2, 15)).onsuccess = function(event) {
+          //   expect(event.target.result).toBe(2);
+            store.clear().onsuccess = function(event) {
+              store.count().onsuccess = function(event) {
+                expect(event.target.result).toBe(0);
+                done();
+              };
+            };
+          // };
+        };
+      });
+    });
+
+    //-------------------------------------------------------------------------
+    it('implements `Index.count`', function(done) {
+      createTestDb(function(err, db, scope) {
+        expect(err).toBeFalsy();
+        if ( err )
+          return done();
+        db.onerror = function(event) {
+          // don't expect any errors to bubble up
+          expect('db.onerror').toBe('never called');
+          return done();
+        };
+        var store = db.transaction().objectStore('data');
+        var index = store.index('count');
+        index.count().onsuccess = function(event) {
+          expect(event.target.result).toBe(3);
+          index.count(scope.IDBKeyRange.bound(10, 30)).onsuccess = function(event) {
+            expect(event.target.result).toBe(2);
+            store.clear().onsuccess = function(event) {
+              index.count().onsuccess = function(event) {
+                expect(event.target.result).toBe(0);
+                done();
+              };
+            };
+          };
+        };
+      });
+    });
+
+
+    //-------------------------------------------------------------------------
     it('returns undefined for keys that don\'t exist', function(done) {
       createTestDb(function(err, db) {
         expect(err).toBeFalsy();
