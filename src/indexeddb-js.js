@@ -63,6 +63,10 @@ define(['underscore'], function(_) {
       this._preventDefault = true;
     };
     this.target = target;
+    if ( this.target.error && this.target.errorCode )
+      this.toString = function() {
+        return '[' + this.target.errorCode + '] ' + this.target.error;
+      };
     return this;
   };
 
@@ -296,6 +300,11 @@ define(['underscore'], function(_) {
 
     //-------------------------------------------------------------------------
     this.createIndex = function(name, keyPath, options) {
+      if ( ! this._txn._db._upgrading )
+        throw new Event({
+          error: '"createIndex" can only be called during "onupgradeneeded" handling',
+          errorCode: 'indexeddb.Store.CI.10'
+        });
       this._meta.index.push({name: name, keyPath: keyPath, options: options});
       this._saved = false;
     };
@@ -344,6 +353,7 @@ define(['underscore'], function(_) {
               + ' VALUES ( ?, ?, ? )',
             this._txn._db.name, this.name, j(this._meta),
             function(err) {
+              this._saved = true;
               return cb.call(object, null, sdb);
             });
           return;
@@ -626,13 +636,9 @@ define(['underscore'], function(_) {
               self.version  = cur;
               self._meta = uj(rows[0].c_meta);
               // todo: load stores?...
-              var ret = new Event(request);
               if ( verOk )
-                return request.onsuccess(ret);
-              // TODO: solve this "onupgradecomplete" hack... it
-              // requires that we support transactions! ugh.
-              ret.onupgradecomplete = function() { request.onsuccess(ret); };
-              return request.onupgradeneeded(ret);
+                return request.onsuccess(new Event(request));
+              return self._upgrade(request);
             }
             self.version = self.version || 0;
             sdb.run(
@@ -643,14 +649,34 @@ define(['underscore'], function(_) {
                   return request._error(
                     null, 'indexeddb.Database.iL.30',
                     'could not insert new database: ' + err);
-                var ret = new Event(request);
-                // TODO: solve this "onupgradecomplete" hack... it
-                // requires that we support transactions! ugh.
-                ret.onupgradecomplete = function() { request.onsuccess(ret); };
-                return request.onupgradeneeded(ret);
+                return self._upgrade(request);
               })
           });
       }, this);
+    };
+
+    //-------------------------------------------------------------------------
+    this._upgrade = function(request) {
+      var ret = new Event(request);
+      this._upgrading = [];
+      request.onupgradeneeded(ret);
+      var upgrades = this._upgrading;
+      this._upgrading = null;
+      var handle_upgrades = function(ops) {
+        if ( ops.length <= 0 )
+          return request.onsuccess(ret);
+        var next = ops.shift();
+        if ( next[0] != 'create' )
+          return request._error(
+            null, 'indexeddb.Database.iU.10',
+            'internal error: unexpected table operation: ' + next[0]);
+        next[1]._create(function(err) {
+          if ( err )
+            return request._error(null, 'indexeddb.Database.iU.20', err);
+          handle_upgrades(ops);
+        });
+      };
+      handle_upgrades(upgrades);
     };
 
     //-------------------------------------------------------------------------
@@ -665,13 +691,24 @@ define(['underscore'], function(_) {
 
     //-------------------------------------------------------------------------
     this.createObjectStore = function(name, options) {
+      if ( ! this._upgrading )
+        throw new Event({
+          error: '"createObjectStore" can only be called during "onupgradeneeded" handling',
+          errorCode: 'indexeddb.Database.COS.10'
+        });
       var txn = new Transaction(this, name, 'readwrite');
       var store = new Store(txn, name, options, true);
+      this._upgrading.push(['create', store]);
       return store;
     };
 
     //-------------------------------------------------------------------------
     this.transaction = function(stores, mode) {
+      if ( this._upgrading )
+        throw new Event({
+          error: '"transaction" cannot be called during "onupgradeneeded" handling',
+          errorCode: 'indexeddb.Database.T.10'
+        });
       return new Transaction(this, stores, mode);
     };
 
@@ -679,7 +716,8 @@ define(['underscore'], function(_) {
     this.setVersion = function(version) {
       var req = new Request();
       // TODO: implement
-      console.log('ERROR: indexeddb.Database.setVersion() not implemented...');
+      // todo: is this subject to _upgrading?
+      // console.log('ERROR: indexeddb.Database.setVersion() not implemented...');
       defer(function(){req._error(this, 'indexeddb.Database.SV.10',
                                   'setVersion() not implemented');}, this);
       return req;

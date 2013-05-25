@@ -22,42 +22,108 @@ define([
     var j = function(o) { return JSON.stringify(o); };
 
     //-------------------------------------------------------------------------
+    var createTestDbHelper = function(options) {
+      // var sdb     = new sqlite3.Database('./test.db');
+      var sdb     = new sqlite3.Database(':memory:');
+      var scope   = indexeddbjs.makeScope('sqlite3', sdb);
+      var req     = scope.indexedDB.open(options.name);
+      req.onerror = options.onerror
+        || function(event) { options.callback('error: ' + event.target.error); };
+      req.onversionchange = options.onversionchange
+        || function(event) { options.callback('error: unexpected "onversionchange"'); };
+      req.onblocked = options.onblocked
+        || function(event) { options.callback('error: unexpected "onblocked"'); };
+      req.onupgradeneeded = options.onupgradeneeded
+        || function(event) { options.callback('error: unexpected "onupgradeneeded"'); };
+      req.onsuccess = options.onsuccess
+        || function(event) { options.callback('error: unexpected "onsuccess"'); };
+      return scope;
+    };
+
+    //-------------------------------------------------------------------------
     var createTestDb = function(cb) {
-      // var sdb   = new sqlite3.Database('./test.db');
-      var sdb   = new sqlite3.Database(':memory:');
-      var scope = indexeddbjs.makeScope('sqlite3', sdb);
-      var req   = scope.indexedDB.open('testdb');
-      req.onerror = function(event) { cb('error: ' + event.target.error.name); };
-      req.onversionchange = function(event) { cb('error: unexpected version change'); };
-      req.onblocked = function(event) { cb('error: unexpected version change'); };
-      req.onupgradeneeded = function(event) {
-        var db = event.target.result;
-        var store = db.createObjectStore('data', {keyPath: 'id'});
-        store.createIndex('value', 'value', {unique: false});
-        store.createIndex('count', 'count', {unique: false});
-        var store2 = db.createObjectStore('longdata', {keyPath: 'id'});
-        store2.createIndex('name', 'name', {unique: false});
-        store.add({id: '1', value: 'foo1', count: 3}).onsuccess = function() {
-          store.add({id: 2, value: 'zapper', count: 23}).onsuccess = function() {
-            store.add({id: '3', value: 'zapper', count: 15}).onsuccess = function() {
-              store2.add({id: 'long-id-1', name: 'long-name-1'}).onsuccess = function() {
-                store2.add({id: 'long-id-2', name: 'long-name-2'}).onsuccess = function() {
-                  // TODO: this is a hack, but there is just no
-                  // other way to support this until indexeddb-js
-                  // supports transactions!... ugh.
-                  if ( event.onupgradecomplete )
-                    event.onupgradecomplete();
+      var upgraded = false;
+      var scope = createTestDbHelper({
+        name: 'testdb',
+        callback: cb,
+        onupgradeneeded: function(event) {
+          upgraded = true;
+          var db = event.target.result;
+          var store = db.createObjectStore('data', {keyPath: 'id'});
+          store.createIndex('value', 'value', {unique: false});
+          store.createIndex('count', 'count', {unique: false});
+          var store2 = db.createObjectStore('longdata', {keyPath: 'id'});
+          store2.createIndex('name', 'name', {unique: false});
+          store.add({id: '1', value: 'foo1', count: 3}).onsuccess = function() {
+            store.add({id: 2, value: 'zapper', count: 23}).onsuccess = function() {
+              store.add({id: '3', value: 'zapper', count: 15}).onsuccess = function() {
+                store2.add({id: 'long-id-1', name: 'long-name-1'}).onsuccess = function() {
+                  store2.add({id: 'long-id-2', name: 'long-name-2'}).onsuccess = function() {
+                    cb(null, db, scope);
+                  };
                 };
               };
             };
           };
-        };
-      };
-      req.onsuccess = function(event) {
-        var db = event.target.result;
-        return cb(null, db, scope);
-      };
+        },
+        onsuccess: function(event) {
+          if ( upgraded )
+            return;
+          var db = event.target.result;
+          return cb(null, db, scope);
+        }
+      });
     };
+
+    //-------------------------------------------------------------------------
+    it('triggers "onupgradeneeded" and "onsuccess" events serially', function(done) {
+      var upgraded = false;
+      var opened = false;
+      createTestDbHelper({
+        name: 'testdb-upgradeneeded-success',
+        onupgradeneeded: function(event) {
+          expect(upgraded).toBeFalsy();
+          expect(opened).toBeFalsy();
+          upgraded = true;
+        },
+        onsuccess: function(event) {
+          expect(upgraded).toBeTruthy();
+          expect(opened).toBeFalsy();
+          opened = true;
+          done();
+        }
+      });
+    });
+
+    //-------------------------------------------------------------------------
+    it('creates new tables requested during "onupgradeneeded"', function(done) {
+      var upgraded = false;
+      var opened = false;
+      var errorHandler = function(err) {
+        expect('error callback call').toBe('never called');
+        expect(err).not.toBeDefined();
+        done();
+      };
+      createTestDbHelper({
+        name: 'testdb-upgradeneeded-success',
+        callback: errorHandler,
+        onupgradeneeded: function(event) {
+          var db = event.target.result;
+          db.onerror = errorHandler;
+          var store = db.createObjectStore('data', {keyPath: 'id'});
+        },
+        onsuccess: function(event) {
+          var db = event.target.result;
+          db.onerror = errorHandler;
+          var txn = db.transaction(['data'], 'readwrite');
+          var store = txn.objectStore('data');
+          var request = store.add({id: '1', value: 'one'});
+          request.onsuccess = function(event) {
+            done();
+          };
+        }
+      });
+    });
 
     //-------------------------------------------------------------------------
     it('implements CRUD for a simple record', function(done) {
@@ -345,14 +411,7 @@ request.onupgradeneeded = function(event) {
   db = event.target.result;
   var store = db.createObjectStore('data', {keyPath: 'id'});
   store.createIndex('value', 'value', {unique: false});
-  store.add({id: 1, value: 'my-first-item'}).onsuccess = function() {
-    // TODO: there is currently a limitation in indexeddb-js that
-    // does not allow it to know when an upgrade has been finished,
-    // and therefore you must tell it by calling "event.onupgradecomplete()"
-    // (otherwise ``request.onsuccess()`` will not be called).
-    if ( event.onupgradecomplete )
-      event.onupgradecomplete();
-  };
+  store.add({id: 1, value: 'my-first-item'});
 };
 
 request.onsuccess = function(event) {

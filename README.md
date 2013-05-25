@@ -93,14 +93,7 @@ request.onupgradeneeded = function(event) {
   db = event.target.result;
   var store = db.createObjectStore('data', {keyPath: 'id'});
   store.createIndex('value', 'value', {unique: false});
-  store.add({id: 1, value: 'my-first-item'}).onsuccess = function() {
-    // TODO: there is currently a limitation in indexeddb-js that
-    // does not allow it to know when an upgrade has been finished,
-    // and therefore you must tell it by calling "event.onupgradecomplete()"
-    // (otherwise ``request.onsuccess()`` will not be called).
-    if ( event.onupgradecomplete )
-      event.onupgradecomplete();
-  };
+  store.add({id: 1, value: 'my-first-item'});
 };
 
 request.onsuccess = function(event) {
