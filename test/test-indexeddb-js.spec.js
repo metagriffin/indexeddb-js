@@ -21,6 +21,9 @@ define([
 
     var j = function(o) { return JSON.stringify(o); };
 
+    // none of these tests should take very long...
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 250;
+
     //-------------------------------------------------------------------------
     var createTestDbHelper = function(options) {
       // var sdb     = new sqlite3.Database('./test.db');
@@ -153,18 +156,85 @@ define([
                   .delete('1').onsuccess = function(event) {
                     // console.log('deleted data');
                     // confirm delete
-                    db.transaction().objectStore('data').get('1').onerror = function(event) {
-                      event.preventDefault();
-                      // console.log('third fetch failed, as expected');
-                      // and reverting to the initial value
-                      db.transaction(null, 'readwrite').objectStore('data')
-                        .put({id: '1', value: 'foo1'}).onsuccess = function(event) {
-                          done();
-                        };
+                    db.transaction().objectStore('data').get('1').onsuccess = function(event) {
+                      expect(event.target.result).toBeUndefined();
+                      done();
                     };
                   };
               };
             };
+        };
+      });
+    });
+
+    //-------------------------------------------------------------------------
+    var getAllData = function(store, cb) {
+      var data = [];
+      store.openCursor().onsuccess = function(event) {
+        var cursor = event.target.result;
+        if ( cursor )
+        {
+          data.push(cursor.value);
+          return cursor.continue();
+        }
+        return cb(null, data);
+      };
+    };
+
+    //-------------------------------------------------------------------------
+    it('implements `Store.clear`', function(done) {
+      createTestDb(function(err, db) {
+        expect(err).toBeFalsy();
+        if ( err )
+          return done();
+        db.onerror = function(event) {
+          // don't expect any errors to bubble up
+          expect('db.onerror').toBe('never called');
+          return done();
+        };
+        var store = db.transaction().objectStore('data');
+        getAllData(store, function(err, data) {
+          expect(err).toBeFalsy();
+          if ( err )
+            return done();
+          var chk = [
+            {id: '1', value: 'foo1', count: 3},
+            {id: 2, value: 'zapper', count: 23},
+            {id: '3', value: 'zapper', count: 15}
+          ];
+          expect(_.sortBy(data, 'id')).toEqual(_.sortBy(chk, 'id'));
+          store.clear().onsuccess = function(event) {
+            getAllData(store, function(err, data) {
+              expect(err).toBeFalsy();
+              if ( err )
+                return done();
+              expect(data).toEqual([]);
+              done();
+            });
+          };
+        });
+      });
+    });
+
+    //-------------------------------------------------------------------------
+    it('returns undefined for keys that don\'t exist', function(done) {
+      createTestDb(function(err, db) {
+        expect(err).toBeFalsy();
+        if ( err )
+          return done();
+        db.onerror = function(event) {
+          // don't expect any errors to bubble up
+          expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
+          return done();
+        };
+        var store = db.transaction().objectStore('data');
+        store.get(2).onsuccess = function(event) {
+          expect(event.target.result).toEqual({id: 2, value: 'zapper', count: 23});
+          store.get('no-such-key').onsuccess = function(event) {
+            expect(event.target.result).toBeUndefined();
+            done();
+          };
         };
       });
     });

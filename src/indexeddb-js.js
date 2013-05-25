@@ -430,7 +430,7 @@ define(['underscore'], function(_) {
             if ( rows.length > 1 )
               return req._error(this, 'indexeddb.Store.G.40',
                                 'internal error: multiple records for key');
-            req.result = rows[0] ? uj(rows[0].c_value) : undefined;
+            req.result = rows.length > 0 ? uj(rows[0].c_value) : undefined;
             if ( req.onsuccess )
               req.onsuccess(new Event(req));
           }, this)
@@ -488,23 +488,21 @@ define(['underscore'], function(_) {
       return req;
     };
 
+    //-------------------------------------------------------------------------
     this.clear = function() {
       var req = new Request();
       this._withEngine(req, function(err, sdb) {
-        if(err) {
+        if ( err )
           return req._error(this, 'indexeddb.Store.C.10',
                             'failed to open a transaction: ' + err);
-        }
         sdb.run(
           'DELETE FROM "' + this._meta.table + '"',
           _.bind(function(err) {
-            if(err) {
+            if ( err )
               return req._error(self, 'indexeddb.Store.C.20',
                                 'failed to clear object store: ' + err);
-            }
-            if(req.onsuccess) {
+            if ( req.onsuccess )
               req.onsuccess(new Event(req));
-            }
           }, this)
         );
       }, this);

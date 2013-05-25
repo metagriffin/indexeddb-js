@@ -44,7 +44,6 @@ include but are not limited to:
     * Database.close()
     * Database.deleteObjectStore()
     * Transaction.abort()
-    * Store.clear()
     * Store.count()
     * Store.deleteIndex()
     * Index.count()
