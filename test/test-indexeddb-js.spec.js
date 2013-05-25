@@ -137,6 +137,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         // try read
@@ -190,6 +191,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var store = db.transaction().objectStore('data');
@@ -225,6 +227,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var store = db.transaction().objectStore('data');
@@ -253,6 +256,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var store = db.transaction().objectStore('data');
@@ -304,6 +308,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         db.transaction().objectStore('data').index('value').get('foo1')
@@ -327,6 +332,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var dataset = [];
@@ -365,6 +371,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var dataset = [];
@@ -393,6 +400,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var dataset = [];
@@ -421,6 +429,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var dataset = [];
@@ -449,6 +458,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var dataset = [];
@@ -477,6 +487,7 @@ define([
         db.onerror = function(event) {
           // don't expect any errors to bubble up
           expect('db.onerror').toBe('never called');
+          expect(event.target.error).toBeNull();
           return done();
         };
         var dataset = [];
