@@ -272,7 +272,6 @@ define([
       });
     });
 
-
     //-------------------------------------------------------------------------
     it('returns undefined for keys that don\'t exist', function(done) {
       createTestDb(function(err, db) {
