@@ -37,11 +37,11 @@ include but are not limited to:
 
 * Compliance with any of the DOMException errors.
 
-* Many non-critical API methods, including:
+* Many non-critical APIs, including:
 
     * indexedDB.deleteDatabase()
     * indexedDB.cmp()
-    * Database.close()
+    * Database.objectStoreNames
     * Database.deleteObjectStore()
     * Transaction.abort()
     * Store.deleteIndex()

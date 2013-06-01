@@ -128,6 +128,100 @@ define([
       });
     });
 
+    var shared_scope = null;
+
+    //-------------------------------------------------------------------------
+    var makeErrorHandler = function(name, errtype, cb) {
+      var func = function(event) {
+        var err = 'unexpected call to "' + name + '.' + errtype + '"';
+        if ( event && event.target && event.target.error )
+          err += ': ' + event.target.error;
+        expect(err).toBeNull();
+        return cb(err);
+      };
+      return func;
+    };
+
+    //-------------------------------------------------------------------------
+    beforeEach(function(callback) {
+      if ( ! shared_scope )
+      {
+        var sdb = new sqlite3.Database(':memory:');
+        shared_scope = indexeddbjs.makeScope('sqlite3', sdb);
+      }
+      callback();
+    });
+
+    //-------------------------------------------------------------------------
+    it('reports version changes correctly', function(done) {
+      var idb = shared_scope;
+      var name = 'indexeddb-js.test.versioning';
+      var request = idb.indexedDB.open(name, 1);
+      request.onerror = makeErrorHandler('versiontest', 'open.error', done);
+      request.onblocked = makeErrorHandler('versiontest', 'open.blocked', done);
+      request.onsuccess = function(event) {
+        var db = event.target.result;
+        expect(db.version).toEqual(1);
+        expect(event.target.transaction).toBeNull();
+        db.close();
+        var req2 = idb.indexedDB.open(name, 7);
+        req2.onerror = makeErrorHandler('reuse', 'open2.error', done);
+        req2.onupgradeneeded = function(event) {
+          var db = event.target.result;
+          expect(db.version).toEqual(7);
+          expect(event.target.transaction.mode).toEqual('versionchange');
+        };
+        req2.onsuccess = function(event) {
+          var db = event.target.result;
+          expect(db.version).toEqual(7);
+          db.close();
+          done();
+        };
+      };
+    });
+
+    //-------------------------------------------------------------------------
+    it('fails on downgrade', function(done) {
+      var idb = shared_scope;
+      var name = 'indexeddb-js.test.versioning';
+      var request = idb.indexedDB.open(name, 3);
+      request.onblocked = makeErrorHandler('versiontest2', 'open.blocked', done);
+      request.onsuccess = makeErrorHandler('versiontest2', 'open.success', done);
+      request.onerror = function(event) {
+        expect(event.target.error).toBeDefined();
+        expect(event.target.error.name).toBe('VersionError');
+        done();
+      };
+    });
+
+    //-------------------------------------------------------------------------
+    it('can be opened again in another test', function(done) {
+      var idb = shared_scope;
+      var name = 'indexeddb-js.test.versioning';
+      var request = idb.indexedDB.open(name, 18);
+      request.onerror = makeErrorHandler('versiontest3', 'open.error', done);
+      request.onblocked = makeErrorHandler('versiontest3', 'open.blocked', done);
+      request.onsuccess = function(event) {
+        var db = event.target.result;
+        expect(db.version).toEqual(18);
+        expect(event.target.transaction).toBeNull();
+        db.close();
+        var req2 = idb.indexedDB.open(name, 29);
+        req2.onerror = makeErrorHandler('versiontest3', 'open2.error', done);
+        req2.onupgradeneeded = function(event) {
+          var db = event.target.result;
+          expect(db.version).toEqual(29);
+          expect(event.target.transaction.mode).toEqual('versionchange');
+        };
+        req2.onsuccess = function(event) {
+          var db = event.target.result;
+          expect(db.version).toEqual(29);
+          db.close();
+          done();
+        };
+      };
+    });
+
     //-------------------------------------------------------------------------
     it('implements CRUD for a simple record', function(done) {
       createTestDb(function(err, db) {

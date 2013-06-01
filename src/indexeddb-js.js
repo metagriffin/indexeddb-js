@@ -73,15 +73,53 @@ define(['underscore'], function(_) {
   //---------------------------------------------------------------------------
   var Request = function() {
     this._error = function(next, code, message) {
-      this.error = '[' + code + ']: ' + message;
+      this.error = '[' + code + '] ' + message;
       err = new Event(_.extend(this, {error: this.error, errorCode: code}));
       // console.log('ERROR: indexedDB.Request: ' + err.target.error);
+      this._errpub(next, err);
+    };
+    this._errevt = function(next, err) {
+      this.error = err;
+      err = new Event(_.extend(this, {error: this.error, errorCode: this.error.code}));
+      // console.log('ERROR: indexedDB.Request: ' + err.target.error);
+      this._errpub(next, err);
+    };
+    this._errpub = function(next, err) {
       if ( this.onerror )
         this.onerror(err);
       if ( ! err._preventDefault && next )
         next._error(err);
     };
   };
+
+  //---------------------------------------------------------------------------
+  // TODO: make these extend DOMException...
+  // TODO: make this nicer
+  // TODO: define and use these:
+  exports.VersionError = function(code, message) {
+    this.name = 'VersionError';
+    this.code = code;
+    this.message = message;
+    this.toString = function() {
+      if ( ! code )
+        return message;
+      return '[' + code + '] ' + message;
+    }
+  };
+  //   UnknownError
+  //   ConstraintError
+  //   DataError
+  //   TransactionInactiveError
+  //   ReadOnlyError
+  // these should already be pre-defined somewhere...
+  //   NotFoundError
+  //   InvalidStateError
+  //   InvalidAccessError
+  //   AbortError
+  //   TimeoutError
+  //   QuotaExceededError
+  //   SyntaxError
+  //   DataCloneError
 
   //---------------------------------------------------------------------------
   var IDBKeyRange = function(lower, upper, lowerOpen, upperOpen) {
@@ -674,22 +712,46 @@ define(['underscore'], function(_) {
           'SELECT c_version, c_meta FROM "idb.database" WHERE c_name = ?',
           self.name,
           function(err, rows) {
-            if ( rows.length > 1 )
+            if ( err )
               return request._error(
                 null, 'indexeddb.Database.iL.20',
+                'could not select from database: ' + err);
+            if ( rows.length > 1 )
+              return request._error(
+                null, 'indexeddb.Database.iL.21',
                 'internal error: received multiple records for idb.database query');
             if ( rows.length == 1 )
             {
-              var cur = rows[0].c_version;
-              var verOk = self.version == undefined || self.version == cur;
-              self.version  = cur;
               self._meta = uj(rows[0].c_meta);
-              // todo: load stores?...
-              if ( verOk )
-                return request.onsuccess(new Event(request));
-              return self._upgrade(request);
+              // todo: load stores and populate `objectStoreNames`...
+              var cur = rows[0].c_version;
+              if ( self.version == undefined || self.version == cur )
+              {
+                self.version = cur;
+                if ( request.onsuccess )
+                  return request.onsuccess(new Event(request));
+                return;
+              }
+              if ( self.version < cur )
+                return request._errevt(
+                  null,
+                  new exports.VersionError(
+                    'indexeddb.Database.iL.25',
+                    'current database version ' + cur
+                      + ' exceeds requested version ' + self.version));
+              sdb.run(
+                'UPDATE "idb.database" SET c_version = ? WHERE c_name = ?',
+                self.version, self.name,
+                function(err) {
+                  if ( err )
+                    return request._error(
+                      null, 'indexeddb.Database.iL.26',
+                      'could not update database version: ' + err);
+                  return self._upgrade(request);
+                });
+              return;
             }
-            self.version = self.version || 0;
+            self.version = self.version || 1;
             sdb.run(
               'INSERT INTO "idb.database" VALUES ( ? , ? , ? )',
               self.name, self.version, j(self._meta),
@@ -707,13 +769,20 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this._upgrade = function(request) {
       var ret = new Event(request);
+      ret.target.transaction = {mode: 'versionchange'};
       this._upgrading = [];
-      request.onupgradeneeded(ret);
+      if ( request.onupgradeneeded )
+        request.onupgradeneeded(ret);
       var upgrades = this._upgrading;
       this._upgrading = null;
       var handle_upgrades = function(ops) {
         if ( ops.length <= 0 )
-          return request.onsuccess(ret);
+        {
+          ret.target.transaction = null;
+          if ( request.onsuccess )
+            return request.onsuccess(ret);
+          return;
+        }
         var next = ops.shift();
         if ( next[0] != 'create' )
           return request._error(
@@ -777,9 +846,13 @@ define(['underscore'], function(_) {
       return new Store(txn, name, null, false);
     };
 
+    //-------------------------------------------------------------------------
+    this.close = function() {
+      // todo: disable all other methods...
+    };
+
     // todo: implement:
     // this.deleteObjectStore = function(name) {};
-    // this.close = function() {};
 
   };
 
