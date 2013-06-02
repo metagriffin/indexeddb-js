@@ -95,7 +95,7 @@ define(['underscore'], function(_) {
   //---------------------------------------------------------------------------
   // TODO: make these extend DOMException...
   // TODO: make this nicer
-  // TODO: define and use these:
+  // TODO: define and use these instead of the custom error garbage
   exports.VersionError = function(code, message) {
     this.name = 'VersionError';
     this.code = code;
@@ -103,7 +103,7 @@ define(['underscore'], function(_) {
     this.toString = function() {
       if ( ! code )
         return message;
-      return '[' + code + '] ' + message;
+      return '[' + code + '] ' + this.name + ': ' + message;
     }
   };
   //   UnknownError
