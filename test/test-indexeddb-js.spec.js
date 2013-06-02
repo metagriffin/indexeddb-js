@@ -20,6 +20,7 @@ define([
   describe('indexeddb-js', function() {
 
     var j = function(o) { return JSON.stringify(o); };
+    var testDbName = 'testdb';
 
     // none of these tests should take very long...
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 250;
@@ -29,7 +30,7 @@ define([
       // var sdb     = new sqlite3.Database('./test.db');
       var sdb     = new sqlite3.Database(':memory:');
       var scope   = indexeddbjs.makeScope('sqlite3', sdb);
-      var req     = scope.indexedDB.open(options.name);
+      var req     = scope.indexedDB.open(options.name || testDbName, options.version);
       req.onerror = options.onerror
         || function(event) { options.callback('error: ' + event.target.error); };
       req.onversionchange = options.onversionchange
@@ -47,7 +48,7 @@ define([
     var createTestDb = function(cb) {
       var upgraded = false;
       var scope = createTestDbHelper({
-        name: 'testdb',
+        name: testDbName,
         callback: cb,
         onupgradeneeded: function(event) {
           upgraded = true;
@@ -601,6 +602,41 @@ define([
       });
     });
 
+    //-------------------------------------------------------------------------
+    it('maintains the `Database.objectStoreNames` attribute', function(done) {
+      createTestDb(function(err, db, scope) {
+        expect(err).toBeFalsy();
+        if ( err )
+          return done();
+        expect(db.version).toEqual(1);
+        expect(db.objectStoreNames).toEqual(['data', 'longdata']);
+        db.close();
+        var req = scope.indexedDB.open(testDbName, 2);
+        req.onerror = makeErrorHandler('objectStoreNames', 'open.error', done);
+        req.onblocked = makeErrorHandler('objectStoreNames', 'open.blocked', done);
+        req.onupgradeneeded = function(event) {
+          db = event.target.result;
+          db.deleteObjectStore('longdata');
+        };
+        req.onsuccess = function(event) {
+          db = event.target.result;
+          expect(db.version).toEqual(2);
+          expect(db.objectStoreNames).toEqual(['data']);
+          // make sure that a "fresh" open maintains this info...
+          db.close();
+          var req = scope.indexedDB.open(testDbName, 2);
+          req.onerror = makeErrorHandler('objectStoreNames', 'open2.error', done);
+          req.onblocked = makeErrorHandler('objectStoreNames', 'open2.blocked', done);
+          req.onupgradeneeded = makeErrorHandler('objectStoreNames', 'open2.onupgradeneeded', done);
+          req.onsuccess = function(event) {
+            db = event.target.result;
+            expect(db.version).toEqual(2);
+            expect(db.objectStoreNames).toEqual(['data']);
+            done();
+          };
+        };
+      });      
+    });
 
     //-------------------------------------------------------------------------
     it('runs the example program from the documentation', function(done) {

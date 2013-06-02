@@ -112,7 +112,16 @@ define(['underscore'], function(_) {
   //   TransactionInactiveError
   //   ReadOnlyError
   // these should already be pre-defined somewhere...
-  //   NotFoundError
+  exports.NotFoundError = function(code, message) {
+    this.name = 'NotFoundError';
+    this.code = code;
+    this.message = message;
+    this.toString = function() {
+      if ( ! code )
+        return message;
+      return '[' + code + '] ' + this.name + ': ' + message;
+    }
+  };
   //   InvalidStateError
   //   InvalidAccessError
   //   AbortError
@@ -325,7 +334,7 @@ define(['underscore'], function(_) {
     // todo: implement
     // this.update = function() {};
     // this.advance = function() {};
-    // this.delete = function() {};    
+    // this.delete = function() {};
 
   };
 
@@ -657,6 +666,7 @@ define(['underscore'], function(_) {
 
     //-------------------------------------------------------------------------
     this.objectStore = function(name) {
+      // todo: check that this store already exists (or that this is a versionchange)
       if ( this._stores.length > 0 && _.indexOf(this._stores, name) == -1 )
         return (new Request())._error(
           this,
@@ -674,10 +684,13 @@ define(['underscore'], function(_) {
   var Database = function(conn, name, version) {
 
     //: attribute `name` is read-only
-    this.name      = name;
+    this.name = name;
 
     //: attribute `version` is read-only
-    this.version   = version;
+    this.version = version;
+
+    //: attribute `objectStoreNames` is read-only
+    this.objectStoreNames = [];
 
     //: callback `onerror` used to trap database-specific errors
     this.onerror   = null;
@@ -723,32 +736,48 @@ define(['underscore'], function(_) {
             if ( rows.length == 1 )
             {
               self._meta = uj(rows[0].c_meta);
-              // todo: load stores and populate `objectStoreNames`...
-              var cur = rows[0].c_version;
-              if ( self.version == undefined || self.version == cur )
-              {
-                self.version = cur;
-                if ( request.onsuccess )
-                  return request.onsuccess(new Event(request));
-                return;
-              }
-              if ( self.version < cur )
-                return request._errevt(
-                  null,
-                  new exports.VersionError(
-                    'indexeddb.Database.iL.25',
-                    'current database version ' + cur
-                      + ' exceeds requested version ' + self.version));
-              sdb.run(
-                'UPDATE "idb.database" SET c_version = ? WHERE c_name = ?',
-                self.version, self.name,
-                function(err) {
+
+              sdb.all(
+                'SELECT c_dbname, c_name FROM "idb.store"', // WHERE c_dbname = ?',
+                // self.name,
+                function(err, stores) {
                   if ( err )
                     return request._error(
-                      null, 'indexeddb.Database.iL.26',
-                      'could not update database version: ' + err);
-                  return self._upgrade(request);
+                      null, 'indexeddb.Database.iL.22',
+                      'could not select store names from database: ' + err);
+
+                  self.objectStoreNames = _.map(stores, function(record) {
+                    return record.c_name;
+                  });
+                  self.objectStoreNames.sort();
+                  var cur = rows[0].c_version;
+                  if ( self.version == undefined || self.version == cur )
+                  {
+                    self.version = cur;
+                    if ( request.onsuccess )
+                      return request.onsuccess(new Event(request));
+                    return;
+                  }
+                  if ( self.version < cur )
+                    return request._errevt(
+                      null,
+                      new exports.VersionError(
+                        'indexeddb.Database.iL.25',
+                        'current database version ' + cur
+                          + ' exceeds requested version ' + self.version));
+                  sdb.run(
+                    'UPDATE "idb.database" SET c_version = ? WHERE c_name = ?',
+                    self.version, self.name,
+                    function(err) {
+                      if ( err )
+                        return request._error(
+                          null, 'indexeddb.Database.iL.26',
+                          'could not update database version: ' + err);
+                      return self._upgrade(request);
+                    });
+
                 });
+
               return;
             }
             self.version = self.version || 1;
@@ -768,6 +797,7 @@ define(['underscore'], function(_) {
 
     //-------------------------------------------------------------------------
     this._upgrade = function(request) {
+      var self = this;
       var ret = new Event(request);
       ret.target.transaction = {mode: 'versionchange'};
       this._upgrading = [];
@@ -784,15 +814,58 @@ define(['underscore'], function(_) {
           return;
         }
         var next = ops.shift();
-        if ( next[0] != 'create' )
-          return request._error(
-            null, 'indexeddb.Database.iU.10',
-            'internal error: unexpected table operation: ' + next[0]);
-        next[1]._create(function(err) {
-          if ( err )
-            return request._error(null, 'indexeddb.Database.iU.20', err);
-          handle_upgrades(ops);
-        });
+        switch ( next[0] )
+        {
+          case 'create':
+          {
+            next[1]._create(function(err) {
+              if ( err )
+                return request._error(null, 'indexeddb.Database.iU.10', err);
+              self.objectStoreNames.push(next[1].name);
+              self.objectStoreNames.sort();
+              handle_upgrades(ops);
+            });
+            return;
+          }
+          case 'delete':
+          {
+            // todo: what about active Store objects still open?...
+            self._withEngine(function(err, sdb) {
+              if ( err )
+                return request._error(null, 'indexeddb.Database.iU.20', err);
+              sdb.run(
+                'DELETE FROM "idb.store" WHERE c_dbname = ? AND c_name = ?',
+                self.name, next[1],
+                function(err) {
+                  if ( err )
+                    return request._error(
+                      null, 'indexeddb.Database.iU.22',
+                      'could not remove table "' + self.name + '.'
+                        + next[1] + '": ' + err);
+                  self.objectStoreNames = _.filter(self.objectStoreNames, function(name) {
+                    return name != next[1];
+                  });
+                  // todo: DRY! (this should be loaded from the database...)
+                  var datatable = 'idb:' + safeName(self.name)
+                    + '.' + safeName(next[1]);
+                  sdb.run(
+                    'DROP TABLE "' + datatable + '"',
+                    function(err) {
+                      if ( err )
+                        return request._error(
+                          null, 'indexeddb.Database.iU.23',
+                          'could not remove data for "' + self.name + '.'
+                            + next[1] + '": ' + err);
+                      handle_upgrades(ops);
+                    });
+                });
+            });
+            return;
+          }
+        }
+        return request._error(
+          null, 'indexeddb.Database.iU.50',
+          'internal error: unexpected table operation: ' + next[0]);
       };
       handle_upgrades(upgrades);
     };
@@ -809,6 +882,7 @@ define(['underscore'], function(_) {
 
     //-------------------------------------------------------------------------
     this.createObjectStore = function(name, options) {
+      // todo: check that it doesn't already exist or is being created...
       if ( ! this._upgrading )
         throw new Event({
           error: '"createObjectStore" can only be called during "onupgradeneeded" handling',
@@ -818,6 +892,21 @@ define(['underscore'], function(_) {
       var store = new Store(txn, name, options, true);
       this._upgrading.push(['create', store]);
       return store;
+    };
+
+    //-------------------------------------------------------------------------
+    this.deleteObjectStore = function(name) {
+      // todo: check that it isn't being created...
+      if ( ! this._upgrading )
+        throw new Event({
+          error: '"deleteObjectStore" can only be called during "onupgradeneeded" handling',
+          errorCode: 'indexeddb.Database.DOS.10'
+        });
+      if ( ! _.contains(this.objectStoreNames, name) )
+        throw new exports.NotFoundError(
+          'indexeddb.Database.DOS.11',
+          'no such table "' + this.name + '.' + name + '"');
+      this._upgrading.push(['delete', name]);
     };
 
     //-------------------------------------------------------------------------
@@ -850,9 +939,6 @@ define(['underscore'], function(_) {
     this.close = function() {
       // todo: disable all other methods...
     };
-
-    // todo: implement:
-    // this.deleteObjectStore = function(name) {};
 
   };
 

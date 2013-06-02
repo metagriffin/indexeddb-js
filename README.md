@@ -41,8 +41,6 @@ include but are not limited to:
 
     * indexedDB.deleteDatabase()
     * indexedDB.cmp()
-    * Database.objectStoreNames
-    * Database.deleteObjectStore()
     * Transaction.abort()
     * Store.deleteIndex()
     * Cursor.update()
