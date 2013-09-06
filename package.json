@@ -5,6 +5,10 @@
   "main":           "src/indexeddb-js.js",
   "author":         "metagriffin <mg.npmjs@uberdev.org>",
   "homepage":       "https://github.com/metagriffin/indexeddb-js",
+  "licenses": [{
+    "type":           "MIT",
+    "url":            "http://opensource.org/licenses/MIT"
+  }],
   "repository": {
     "type": "git",
     "url":  "git://github.com/metagriffin/indexeddb-js.git"
