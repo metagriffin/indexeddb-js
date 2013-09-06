@@ -799,7 +799,8 @@ define(['underscore'], function(_) {
     this._upgrade = function(request) {
       var self = this;
       var ret = new Event(request);
-      ret.target.transaction = {mode: 'versionchange'};
+      ret.target.transaction = new Transaction(this, [], 'readwrite');
+      ret.target.transaction.mode = 'versionchange';
       this._upgrading = [];
       if ( request.onupgradeneeded )
         request.onupgradeneeded(ret);
