@@ -968,8 +968,68 @@ define(['underscore'], function(_) {
       return request;
     };
 
+    this.deleteDatabase = function(name) {
+	      var request = _.extend(new Request(), {
+          onversionchange: null,
+          onupgradeneeded: null,
+          onblocked:       null,
+          onerror:         null,
+          onsuccess:       null,
+          result:          null
+        });
+        self = this;
+        var sdb = this._driver;
+              sdb.all(
+                'SELECT c_meta FROM "idb.store" WHERE c_dbname = ?',
+                name,
+                function(err, rows) {
+                  if ( err )
+                    return request._error(
+                      null, 'indexeddb.Database.dD.10',
+                      'could not remove table "' + name + '.'
+                        + '": ' + err);
+                  sdb.serialize(function() {
+                    for(var i=0; i<rows.length; i++) {
+                      var datatable = JSON.parse(rows[i].c_meta).table; 
+                      sdb.run(
+                        'DROP TABLE "' + datatable + '"',
+                        function(err) {
+                          if ( err )
+                            return request._error(
+                              null, 'indexeddb.Database.dD.11',
+                              'could not remove data for "' + datatable + '.'
+                                + '": ' + err);
+                      }); 
+                    }
+                    sdb.run(
+                      'DELETE FROM "idb.store" WHERE c_dbname = ?',
+                      name,
+                      function(err) {
+                        if ( err )
+                          return request._error(
+                            null, 'indexeddb.Database.dD.12',
+                            'could not remove data for "' + name + '.'
+                              + '": ' + err);
+        
+                    }); 
+                    sdb.run(
+                      'DELETE FROM "idb.database" WHERE c_name = ?',
+                      name,
+                      function(err) {
+                        if ( err )
+                          return request._error(
+                            null, 'indexeddb.Database.dD.13',
+                            'could not remove data for "' + name + '.'
+                              + '": ' + err);
+                        if ( request.onsuccess ) {
+                          request.onsuccess({target: {error: false, errorCode: false}});
+                        }
+                    }); 
+                  });
+                });
+      return request;
+    };
     // todo: implement:
-    // this.deleteDatabase = function(name) {};
     // this.cmp = function(first, second) {};
 
     return this;
