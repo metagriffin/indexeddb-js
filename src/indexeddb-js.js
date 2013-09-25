@@ -509,6 +509,7 @@ define(['underscore'], function(_) {
           return req._error(this, 'indexeddb.Store.P.10',
                             'failed to open a transaction: ' + err);
         var self = this;
+        var key = object[this._meta.options.keyPath];
         sdb.run(
           'INSERT OR REPLACE INTO "' + this._meta.table + '" ( c_key, c_value)'
             + ' VALUES ( ?, ? )',
@@ -520,7 +521,7 @@ define(['underscore'], function(_) {
             if ( this.changes != 1 )
               return req._error(self, 'indexeddb.Store.P.30',
                                 'unexpected number of changes: ' + diff.changes);
-            req.result = object;
+            req.result = key;
             if ( req.onsuccess )
               req.onsuccess(new Event(req));
           });
