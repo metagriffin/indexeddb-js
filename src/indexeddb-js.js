@@ -1,3 +1,5 @@
+/*global escape, setTimeout, define, require, module, process */
+/*jslint todo:true, vars:true, bitwise:true, eqeq:true */
 // -*- coding: utf-8 -*-
 //-----------------------------------------------------------------------------
 // file: $Id$
@@ -15,10 +17,11 @@
 //-----------------------------------------------------------------------------
 
 // for node compatibility...
-if ( typeof(define) !== 'function')
+if ( typeof define !== 'function' ) {
   var define = require('amdefine')(module);
+}
 
-define(['underscore'], function(_) {
+define(['underscore'], function(_) { 'use strict';
 
   var exports = {};
 
@@ -26,23 +29,17 @@ define(['underscore'], function(_) {
   var j      = function(obj) { return JSON.stringify(obj); };
   var uj     = function(str) { return JSON.parse(str); };
   var defer  = function(cb, object) {
-    if ( object != undefined )
+    if ( object != undefined ) {
       cb = _.bind(cb, object);
-    if ( typeof(process) == 'undefined' )
+    }
+    if ( process === undefined ) {
       setTimeout(cb, 0);
-    else
+    }
+    else {
       process.nextTick(cb);
+    }
   };
-  var makeID = function() {
-    // shamelessly scrubbed from:
-    //   http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript/2117523#2117523
-    // (adjusted to remove the dashes)
-    // todo: see some of those links on how to make this more "robust"...
-    return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-      return v.toString(16);
-    });
-  };
+
   var safeName = function(name) {
     name = escape(name);
     return name
@@ -63,10 +60,11 @@ define(['underscore'], function(_) {
       this._preventDefault = true;
     };
     this.target = target;
-    if ( this.target.error && this.target.errorCode )
+    if ( this.target.error && this.target.errorCode ) {
       this.toString = function() {
         return '[' + this.target.errorCode + '] ' + this.target.error;
       };
+    }
     return this;
   };
 
@@ -74,7 +72,7 @@ define(['underscore'], function(_) {
   var Request = function() {
     this._error = function(next, code, message) {
       this.error = '[' + code + '] ' + message;
-      err = new Event(_.extend(this, {error: this.error, errorCode: code}));
+      var err = new Event(_.extend(this, {error: this.error, errorCode: code}));
       // console.log('ERROR: indexedDB.Request: ' + err.target.error);
       this._errpub(next, err);
     };
@@ -85,10 +83,12 @@ define(['underscore'], function(_) {
       this._errpub(next, err);
     };
     this._errpub = function(next, err) {
-      if ( this.onerror )
+      if ( this.onerror ) {
         this.onerror(err);
-      if ( ! err._preventDefault && next )
+      }
+      if ( ! err._preventDefault && next ) {
         next._error(err);
+      }
     };
   };
 
@@ -101,10 +101,11 @@ define(['underscore'], function(_) {
     this.code = code;
     this.message = message;
     this.toString = function() {
-      if ( ! code )
+      if ( ! code ) {
         return message;
+      }
       return '[' + code + '] ' + this.name + ': ' + message;
-    }
+    };
   };
   //   UnknownError
   //   ConstraintError
@@ -117,10 +118,11 @@ define(['underscore'], function(_) {
     this.code = code;
     this.message = message;
     this.toString = function() {
-      if ( ! code )
+      if ( ! code ) {
         return message;
+      }
       return '[' + code + '] ' + this.name + ': ' + message;
-    }
+    };
   };
   //   InvalidStateError
   //   InvalidAccessError
@@ -158,17 +160,21 @@ define(['underscore'], function(_) {
   IDBKeyRange.prototype.check = function(value) {
     if ( this.lower !== undefined )
     {
-      if ( value == this.lower )
+      if ( value == this.lower ) {
         return ! this.lowerOpen;
-      if ( value < this.lower )
+      }
+      if ( value < this.lower ) {
         return false;
+      }
     }
     if ( this.upper !== undefined )
     {
-      if ( value == this.upper )
+      if ( value == this.upper ) {
         return ! this.upperOpen;
-      if ( value > this.upper )
+      }
+      if ( value > this.upper ) {
         return false;
+      }
     }
     return true;
   };
@@ -187,10 +193,12 @@ define(['underscore'], function(_) {
     this._error    = function(event) {
       // console.log('ERROR: indexedDB.Store[' + this._txn._db.name + '.'
       //             + this.name + ']: ' + event.target.error);
-      if ( this.onerror )
+      if ( this.onerror ) {
         this.onerror(event);
-      if ( ! event._preventDefault )
+      }
+      if ( ! event._preventDefault ) {
         this.objectStore._error(event);
+      }
     };
 
     //-------------------------------------------------------------------------
@@ -206,17 +214,20 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.count = function(key) {
       var req = new Request();
-      if ( key && ! ( key instanceof IDBKeyRange ) )
+      if ( key && ! ( key instanceof IDBKeyRange ) ) {
         key = IDBKeyRange.only(key);
+      }
       // todo: this should really be optimized to tell _getAll to count
       //       the objects, not actually fetch them...
       this._getAll(req, key, function(err, objects) {
-        if ( err )
+        if ( err ) {
           return req._error(this, 'indexeddb.Index.Ct.10',
                             'failed to fetch objects: ' + err);
+        }
         req.result = objects.length;
-        if ( req.onsuccess )
+        if ( req.onsuccess ) {
           req.onsuccess(new Event(req));
+        }
       });
       return req;
     };
@@ -225,15 +236,18 @@ define(['underscore'], function(_) {
     this._get = function(value, key) {
       var req = new Request();
       this._getAll(req, IDBKeyRange.only(value), function(err, objects) {
-        if ( err )
+        if ( err ) {
           return req._error(this, 'indexeddb.Index.iG.10',
                             'failed to fetch object by index: ' + err);
-        if ( objects.length <= 0 )
+        }
+        if ( objects.length <= 0 ) {
           return req._error(this, 'indexeddb.Index.iG.20',
                             'no such index name in object store');
+        }
         req.result = objects[0][key ? 'key' : 'value'];
-        if ( req.onsuccess )
+        if ( req.onsuccess ) {
           req.onsuccess(new Event(req));
+        }
       });
       return req;
     };
@@ -242,15 +256,18 @@ define(['underscore'], function(_) {
     this._getAll = function(request, range, cb, object) {
       var self = this;
       store._getAll(request, null, function(err, objects) {
-        if ( err )
+        if ( err ) {
           return request._error(this, 'indexeddb.Index.iGA.10',
                                 'failed to fetch objects by index: ' + err);
+        }
         var index = _.find(store._meta.index, function(e) { return e.name == self._name; });
-        if ( index == undefined )
+        if ( index == undefined ) {
           return request._error(this, 'indexeddb.Index.iGA.20',
                             'no such index name in object store');
-        if ( ! range )
+        }
+        if ( ! range ) {
           return cb.call(object, null, objects);
+        }
         cb.call(object, null, _.filter(objects, function(e) {
           return range.check(store._extractValue(e.value, index.keyPath));
         }));
@@ -261,7 +278,7 @@ define(['underscore'], function(_) {
     this.openCursor = function(range, direction) {
       var req = new Request();
       req.cursor = new Cursor(this, range, direction, false, req);
-      req.cursor.continue();
+      req.cursor['continue']();
       return req;
     };
 
@@ -269,7 +286,7 @@ define(['underscore'], function(_) {
     this.openKeyCursor = function(range, direction) {
       var req = new Request();
       req.cursor = new Cursor(this, range, direction, true, req);
-      req.cursor.continue();
+      req.cursor['continue']();
       return req;
     };
 
@@ -284,8 +301,9 @@ define(['underscore'], function(_) {
     // todo: implement these attributes...
     // this.primaryKey  = ...;
 
-    if ( range && ! ( range instanceof IDBKeyRange ) )
+    if ( range && ! ( range instanceof IDBKeyRange ) ) {
       range = IDBKeyRange.only(range);
+    }
 
     // -- private attributes
     this._range    = range;
@@ -294,39 +312,46 @@ define(['underscore'], function(_) {
     this._next     = 0;
     this._retkey   = retkey;
     this._error    = function(event) {
-      if ( this.onerror )
+      if ( this.onerror ) {
         this.onerror(event);
-      if ( ! event._preventDefault )
+      }
+      if ( ! event._preventDefault ) {
         this.source._error(event);
+      }
     };
 
     //-------------------------------------------------------------------------
-    this.continue = function() {
+    this['continue'] = function() {
       defer(function() {
-        if ( this.direction != 'next' )
+        if ( this.direction !== 'next' ) {
           return this._request._error(this, 'indexeddb.Cursor.C.5',
                                       'non-"next" cursor direction not supported');
-        if ( this._data == undefined )
+        }
+        if ( this._data == undefined ) {
           return this.source._getAll(this._request, this._range, function(err, rows) {
-            if ( err )
+            if ( err ) {
               return this._request._error(this, 'indexeddb.Cursor.C.10',
                                           'failed to fetch data for cursor: ' + err);
+            }
             this._data = rows;
             this._next = 0;
-            this.continue();
+            this['continue']();
           }, this);
+        }
         if ( this._next >= this._data.length )
         {
-          if ( this._request.onsuccess )
+          if ( this._request.onsuccess ) {
             this._request.onsuccess(new Event({result: null}));
+          }
           return;
         }
         this.key      = this._data[this._next].key;
         this.value    = this._data[this._next].value;
         this.position = this._next;
         this._next    += 1;
-        if ( this._request.onsuccess )
+        if ( this._request.onsuccess ) {
           this._request.onsuccess(new Event({result: this}));
+        }
         return;
       }, this);
     };
@@ -337,6 +362,7 @@ define(['underscore'], function(_) {
     // this.delete = function() {};
 
   };
+
 
   //---------------------------------------------------------------------------
   var Store = function(txn, name, options, create) {
@@ -354,19 +380,22 @@ define(['underscore'], function(_) {
     this._error    = function(event) {
       // console.log('ERROR: indexedDB.Store[' + this._txn._db.name + '.'
       //             + this.name + ']: ' + event.target.error);
-      if ( this.onerror )
+      if ( this.onerror ) {
         this.onerror(event);
-      if ( ! event._preventDefault )
+      }
+      if ( ! event._preventDefault ) {
         this._txn._error(event);
+      }
     };
 
     //-------------------------------------------------------------------------
     this.createIndex = function(name, keyPath, options) {
-      if ( ! this._txn._db._upgrading )
+      if ( ! this._txn._db._upgrading ) {
         throw new Event({
           error: '"createIndex" can only be called during "onupgradeneeded" handling',
           errorCode: 'indexeddb.Store.CI.10'
         });
+      }
       this._meta.index.push({name: name, keyPath: keyPath, options: options});
       this._saved = false;
     };
@@ -382,23 +411,28 @@ define(['underscore'], function(_) {
       if ( this._saved )
       {
         this._txn._db._withEngine(function(err, sdb) {
-          if ( err )
+          if ( err ) {
             return cb.call(object, err);
-          if ( this._meta.table != undefined )
+          }
+          if ( this._meta.table != undefined ) {
             return cb.call(object, null, sdb);
+          }
           sdb.all(
             'SELECT c_meta FROM "idb.store" WHERE c_dbname = ? AND c_name = ?',
             this._txn._db.name, this.name,
             _.bind(function(err, rows) {
-              if ( err )
+              if ( err ) {
                 return request._error(this, 'indexeddb.Store.iWI.10', err);
-              if ( rows.length <= 0 )
+              }
+              if ( rows.length <= 0 ) {
                 return request._error(this, 'indexeddb.Store.iWI.11',
                                       'store "' + this._txn._db.name + '"."'
                                       + this.name + '" not found in idb.store');
-              if ( rows.length > 1 )
+              }
+              if ( rows.length > 1 ) {
                 return request._error(this, 'indexeddb.Store.iWI.12',
                                       'internal error: redundant rows in idb.store');
+              }
               this._meta = uj(rows[0].c_meta);
               return cb.call(object, null, sdb);
             }, this)
@@ -407,33 +441,36 @@ define(['underscore'], function(_) {
         return;
       }
       this._txn._db._withEngine(function(err, sdb) {
-        if ( err )
+        if ( err ) {
           return cb.call(object, err);
+        }
         var doInsert = _.bind(function() {
           sdb.run(
             'INSERT OR REPLACE INTO "idb.store" (c_dbname, c_name, c_meta)'
               + ' VALUES ( ?, ?, ? )',
             this._txn._db.name, this.name, j(this._meta),
-            function(err) {
+            function(/*err*/) {
               this._saved = true;
               return cb.call(object, null, sdb);
             });
           return;
         }, this);
-        if ( this._meta.table != undefined )
+        if ( this._meta.table != undefined ) {
           return doInsert();
+        }
         if ( this._meta.options.autoIncrement == true
-             || this._meta.options.keyPath == undefined )
+             || this._meta.options.keyPath == undefined ) {
           // TODO: support auto-incrementing keys...
           return request._error(
             this,
             'indexeddb.Store.iWI.30',
             'auto-incrementing keys not implemented');
+        }
         this._meta.table = 'idb:' + safeName(this._txn._db.name)
           + '.' + safeName(this.name);
         sdb.run('CREATE TABLE "' + this._meta.table
                 + '" (c_key TEXT UNIQUE NOT NULL PRIMARY KEY, c_value TEXT)',
-                function(err) {
+                function(/*err*/) {
                   doInsert();
                 });
         // todo: create index tables...
@@ -443,12 +480,14 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this._extractValue = function(object, path) {
       var walker = function(object, path) {
-        if ( _.isArray(path) )
+        if ( _.isArray(path) ) {
           return _.map(path, function(e) { return walker(object, e); }).join('');
+        }
         var idx = path.indexOf('.');
-        if ( idx == -1 )
+        if ( idx === -1 ) {
           return object[path];
-        return '' + walker(object[path.slice(0, idx)], path.slice(idx + 1));
+        }
+        return String(walker(object[path.slice(0, idx)], path.slice(idx + 1)));
       };
       return walker(object, path || this._meta.options.keyPath);
     };
@@ -457,18 +496,21 @@ define(['underscore'], function(_) {
     this.add = function(object) {
       var req = new Request();
       this._withEngine(req, function(err, sdb) {
-        if ( err )
+        if ( err ) {
           return req._error(this, 'indexeddb.Store.A.10',
                             'failed to open a transaction: ' + err);
+        }
         sdb.run(
           'INSERT INTO "' + this._meta.table + '" (c_key, c_value) VALUES ( ?, ? )',
           this._extractValue(object), j(object),
           _.bind(function(err) {
-            if ( err )
+            if ( err ) {
               return req._error(this, 'indexeddb.Store.A.20',
                                 'failed to add object: ' + err);
-            if ( req.onsuccess )
+            }
+            if ( req.onsuccess ) {
               req.onsuccess(new Event(req));
+            }
           }, this)
         );
       }, this);
@@ -479,22 +521,26 @@ define(['underscore'], function(_) {
     this.get = function(objectID) {
       var req = new Request();
       this._withEngine(req, function(err, sdb) {
-        if ( err )
+        if ( err ) {
           return req._error(this, 'indexeddb.Store.G.10',
                             'failed to open a transaction: ' + err);
+        }
         sdb.all(
           'SELECT c_value FROM "' + this._meta.table + '" WHERE c_key = ?',
           objectID,
           _.bind(function(err, rows) {
-            if ( err )
+            if ( err ) {
               return req._error(this, 'indexeddb.Store.G.20',
                                 'failed to fetch object: ' + err);
-            if ( rows.length > 1 )
+            }
+            if ( rows.length > 1 ) {
               return req._error(this, 'indexeddb.Store.G.40',
                                 'internal error: multiple records for key');
+            }
             req.result = rows.length > 0 ? uj(rows[0].c_value) : undefined;
-            if ( req.onsuccess )
+            if ( req.onsuccess ) {
               req.onsuccess(new Event(req));
+            }
           }, this)
         );
       }, this);
@@ -505,9 +551,10 @@ define(['underscore'], function(_) {
     this.put = function(object) {
       var req = new Request();
       this._withEngine(req, function(err, sdb) {
-        if ( err )
+        if ( err ) {
           return req._error(this, 'indexeddb.Store.P.10',
                             'failed to open a transaction: ' + err);
+        }
         var self = this;
         var key = object[this._meta.options.keyPath];
         sdb.run(
@@ -515,37 +562,44 @@ define(['underscore'], function(_) {
             + ' VALUES ( ?, ? )',
           this._extractValue(object), j(object),
           function(err) {
-            if ( err )
+            if ( err ) {
               return req._error(self, 'indexeddb.Store.P.20',
                                 'failed to update object: ' + err);
-            if ( this.changes != 1 )
+            }
+            // Neither changes nor diff is used anywhere here; how added?
+            if ( this.changes != 1 ) {
               return req._error(self, 'indexeddb.Store.P.30',
                                 'unexpected number of changes: ' + diff.changes);
+            }
             req.result = key;
-            if ( req.onsuccess )
+            if ( req.onsuccess ) {
               req.onsuccess(new Event(req));
+            }
           });
       }, this);
       return req;
     };
 
     //-------------------------------------------------------------------------
-    this.delete = function(objectID) {
+    this['delete'] = function(objectID) {
       var req = new Request();
       this._withEngine(req, function(err, sdb) {
-        if ( err )
+        if ( err ) {
           return req._error(this, 'indexeddb.Store.D.10',
                             'failed to open a transaction: ' + err);
+        }
         var self = this;
         sdb.run(
           'DELETE FROM "' + this._meta.table + '" WHERE c_key = ?',
           objectID,
           function(err) {
-            if ( err )
+            if ( err ) {
               return req._error(self, 'indexeddb.Store.D.20',
                                 'failed to delete object: ' + err);
-            if ( req.onsuccess )
+            }
+            if ( req.onsuccess ) {
               req.onsuccess(new Event(req));
+            }
           });
       }, this);
       return req;
@@ -555,17 +609,20 @@ define(['underscore'], function(_) {
     this.clear = function() {
       var req = new Request();
       this._withEngine(req, function(err, sdb) {
-        if ( err )
+        if ( err ) {
           return req._error(this, 'indexeddb.Store.C.10',
                             'failed to open a transaction: ' + err);
+        }
         sdb.run(
           'DELETE FROM "' + this._meta.table + '"',
           _.bind(function(err) {
-            if ( err )
-              return req._error(self, 'indexeddb.Store.C.20',
+            if ( err ) {
+              return req._error(this, 'indexeddb.Store.C.20',
                                 'failed to clear object store: ' + err);
-            if ( req.onsuccess )
+            }
+            if ( req.onsuccess ) {
               req.onsuccess(new Event(req));
+            }
           }, this)
         );
       }, this);
@@ -575,17 +632,20 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.count = function(key) {
       var req = new Request();
-      if ( key && ! ( key instanceof IDBKeyRange ) )
+      if ( key && ! ( key instanceof IDBKeyRange ) ) {
         key = IDBKeyRange.only(key);
+      }
       // todo: this should really be optimized to tell _getAll to count
       //       the objects, not actually fetch them...
       this._getAll(req, key, function(err, objects) {
-        if ( err )
+        if ( err ) {
           return req._error(this, 'indexeddb.Store.Ct.10',
                             'failed to fetch objects: ' + err);
+        }
         req.result = objects.length;
-        if ( req.onsuccess )
+        if ( req.onsuccess ) {
           req.onsuccess(new Event(req));
+        }
       });
       return req;
     };
@@ -593,20 +653,23 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this._getAll = function(request, range, cb, object) {
       this._withEngine(request, function(err, sdb) {
-        if ( err )
-          return req._error(this, 'indexeddb.Store.iGA.10',
+        if ( err ) {
+          return request._error(this, 'indexeddb.Store.iGA.10',
                             'failed to open a transaction: ' + err);
-        if ( range != undefined )
+        }
+        if ( range != undefined ) {
           return cb.call(object,
                          {code: 'indexeddb.Store.iGA.20',
                           message: 'range operation not supported'});
+        }
         sdb.all(
           'SELECT c_key, c_value FROM "' + this._meta.table + '"',
           _.bind(function(err, rows) {
-            if ( err )
+            if ( err ) {
               return cb.call(object,
                              {code: 'indexeddb.Store.iGA.30',
                               message: 'failed to fetch objects: ' + err});
+            }
             cb.call(object, null, _.map(rows, function(e) {
               return {key: e.c_key, value: uj(e.c_value)};
             }));
@@ -624,7 +687,7 @@ define(['underscore'], function(_) {
     this.openCursor = function(range, direction) {
       var req = new Request();
       req.cursor = new Cursor(this, range, direction, false, req);
-      req.cursor.continue();
+      req.cursor['continue']();
       return req;
     };
 
@@ -632,7 +695,7 @@ define(['underscore'], function(_) {
     this.openKeyCursor = function(range, direction) {
       var req = new Request();
       req.cursor = new Cursor(this, range, direction, true, req);
-      req.cursor.continue();
+      req.cursor['continue']();
       return req;
     };
 
@@ -659,20 +722,23 @@ define(['underscore'], function(_) {
     this._preventDefault = false;
     this._error          = function(event) {
       // console.log('ERROR: indexedDB.Transaction[' + this.db.name + ']: ' + event.target.error);
-      if ( this.onerror )
+      if ( this.onerror ) {
         this.onerror(event);
-      if ( ! event._preventDefault )
+      }
+      if ( ! event._preventDefault ) {
         this.db._error(event);
+      }
     };
 
     //-------------------------------------------------------------------------
     this.objectStore = function(name) {
       // todo: check that this store already exists (or that this is a versionchange)
-      if ( this._stores.length > 0 && _.indexOf(this._stores, name) == -1 )
+      if ( this._stores.length > 0 && _.indexOf(this._stores, name) === -1 ) {
         return (new Request())._error(
           this,
           'indexeddb.Transaction.OS.10',
           'request for out-of-transaction-context object store "' + name + '"');
+      }
       return this.db._openStore(this, name);
     };
 
@@ -701,16 +767,18 @@ define(['underscore'], function(_) {
     this._meta     = {stores: []};
     this._error    = function(event) {
       // console.log('ERROR: indexedDB.Database[' + this.name + ']: ' + event.target.error);
-      if ( this.onerror )
+      if ( this.onerror ) {
         this.onerror(event);
+      }
     };
 
     //-------------------------------------------------------------------------
     this._load = function(request) {
       this._withEngine(function(err, sdb) {
-        if ( err )
+        if ( err ) {
           return request._error(null, 'indexeddb.Database.iL.10',
                                 'failed to open a transaction: ' + err);
+        }
 
         var self = this;
         sdb.run('CREATE TABLE IF NOT EXISTS "idb.database"'
@@ -726,15 +794,17 @@ define(['underscore'], function(_) {
           'SELECT c_version, c_meta FROM "idb.database" WHERE c_name = ?',
           self.name,
           function(err, rows) {
-            if ( err )
+            if ( err ) {
               return request._error(
                 null, 'indexeddb.Database.iL.20',
                 'could not select from database: ' + err);
-            if ( rows.length > 1 )
+            }
+            if ( rows.length > 1 ) {
               return request._error(
                 null, 'indexeddb.Database.iL.21',
                 'internal error: received multiple records for idb.database query');
-            if ( rows.length == 1 )
+            }
+            if ( rows.length === 1 )
             {
               self._meta = uj(rows[0].c_meta);
 
@@ -742,10 +812,11 @@ define(['underscore'], function(_) {
                 'SELECT c_dbname, c_name FROM "idb.store"', // WHERE c_dbname = ?',
                 // self.name,
                 function(err, stores) {
-                  if ( err )
+                  if ( err ) {
                     return request._error(
                       null, 'indexeddb.Database.iL.22',
                       'could not select store names from database: ' + err);
+                  }
 
                   self.objectStoreNames = _.map(stores, function(record) {
                     return record.c_name;
@@ -755,25 +826,28 @@ define(['underscore'], function(_) {
                   if ( self.version == undefined || self.version == cur )
                   {
                     self.version = cur;
-                    if ( request.onsuccess )
+                    if ( request.onsuccess ) {
                       return request.onsuccess(new Event(request));
+                    }
                     return;
                   }
-                  if ( self.version < cur )
+                  if ( self.version < cur ) {
                     return request._errevt(
                       null,
                       new exports.VersionError(
                         'indexeddb.Database.iL.25',
                         'current database version ' + cur
                           + ' exceeds requested version ' + self.version));
+                  }
                   sdb.run(
                     'UPDATE "idb.database" SET c_version = ? WHERE c_name = ?',
                     self.version, self.name,
                     function(err) {
-                      if ( err )
+                      if ( err ) {
                         return request._error(
                           null, 'indexeddb.Database.iL.26',
                           'could not update database version: ' + err);
+                      }
                       return self._upgrade(request);
                     });
 
@@ -786,12 +860,13 @@ define(['underscore'], function(_) {
               'INSERT INTO "idb.database" VALUES ( ? , ? , ? )',
               self.name, self.version, j(self._meta),
               function(err) {
-                if ( err )
+                if ( err ) {
                   return request._error(
                     null, 'indexeddb.Database.iL.30',
                     'could not insert new database: ' + err);
+                }
                 return self._upgrade(request);
-              })
+              });
           });
       }, this);
     };
@@ -803,47 +878,49 @@ define(['underscore'], function(_) {
       ret.target.transaction = new Transaction(this, [], 'readwrite');
       ret.target.transaction.mode = 'versionchange';
       this._upgrading = [];
-      if ( request.onupgradeneeded )
+      if ( request.onupgradeneeded ) {
         request.onupgradeneeded(ret);
+      }
       var upgrades = this._upgrading;
       this._upgrading = null;
       var handle_upgrades = function(ops) {
         if ( ops.length <= 0 )
         {
           ret.target.transaction = null;
-          if ( request.onsuccess )
+          if ( request.onsuccess ) {
             return request.onsuccess(ret);
+          }
           return;
         }
         var next = ops.shift();
         switch ( next[0] )
         {
           case 'create':
-          {
             next[1]._create(function(err) {
-              if ( err )
+              if ( err ) {
                 return request._error(null, 'indexeddb.Database.iU.10', err);
+              }
               self.objectStoreNames.push(next[1].name);
               self.objectStoreNames.sort();
               handle_upgrades(ops);
             });
             return;
-          }
           case 'delete':
-          {
             // todo: what about active Store objects still open?...
             self._withEngine(function(err, sdb) {
-              if ( err )
+              if ( err ) {
                 return request._error(null, 'indexeddb.Database.iU.20', err);
+              }
               sdb.run(
                 'DELETE FROM "idb.store" WHERE c_dbname = ? AND c_name = ?',
                 self.name, next[1],
                 function(err) {
-                  if ( err )
+                  if ( err ) {
                     return request._error(
                       null, 'indexeddb.Database.iU.22',
                       'could not remove table "' + self.name + '.'
                         + next[1] + '": ' + err);
+                  }
                   self.objectStoreNames = _.filter(self.objectStoreNames, function(name) {
                     return name != next[1];
                   });
@@ -853,17 +930,17 @@ define(['underscore'], function(_) {
                   sdb.run(
                     'DROP TABLE "' + datatable + '"',
                     function(err) {
-                      if ( err )
+                      if ( err ) {
                         return request._error(
                           null, 'indexeddb.Database.iU.23',
                           'could not remove data for "' + self.name + '.'
                             + next[1] + '": ' + err);
+                      }
                       handle_upgrades(ops);
                     });
                 });
             });
             return;
-          }
         }
         return request._error(
           null, 'indexeddb.Database.iU.50',
@@ -885,11 +962,12 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.createObjectStore = function(name, options) {
       // todo: check that it doesn't already exist or is being created...
-      if ( ! this._upgrading )
+      if ( ! this._upgrading ) {
         throw new Event({
           error: '"createObjectStore" can only be called during "onupgradeneeded" handling',
           errorCode: 'indexeddb.Database.COS.10'
         });
+      }
       var txn = new Transaction(this, name, 'readwrite');
       var store = new Store(txn, name, options, true);
       this._upgrading.push(['create', store]);
@@ -899,30 +977,33 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.deleteObjectStore = function(name) {
       // todo: check that it isn't being created...
-      if ( ! this._upgrading )
+      if ( ! this._upgrading ) {
         throw new Event({
           error: '"deleteObjectStore" can only be called during "onupgradeneeded" handling',
           errorCode: 'indexeddb.Database.DOS.10'
         });
-      if ( ! _.contains(this.objectStoreNames, name) )
+      }
+      if ( ! _.contains(this.objectStoreNames, name) ) {
         throw new exports.NotFoundError(
           'indexeddb.Database.DOS.11',
           'no such table "' + this.name + '.' + name + '"');
+      }
       this._upgrading.push(['delete', name]);
     };
 
     //-------------------------------------------------------------------------
     this.transaction = function(stores, mode) {
-      if ( this._upgrading )
+      if ( this._upgrading ) {
         throw new Event({
           error: '"transaction" cannot be called during "onupgradeneeded" handling',
           errorCode: 'indexeddb.Database.T.10'
         });
+      }
       return new Transaction(this, stores, mode);
     };
 
     //-------------------------------------------------------------------------
-    this.setVersion = function(version) {
+    this.setVersion = function(/*version*/) {
       var req = new Request();
       // TODO: implement
       // todo: is this subject to _upgrading?
@@ -978,50 +1059,56 @@ define(['underscore'], function(_) {
           onsuccess:       null,
           result:          null
         });
-        self = this;
         var sdb = this._driver;
               sdb.all(
                 'SELECT c_meta FROM "idb.store" WHERE c_dbname = ?',
                 name,
                 function(err, rows) {
-                  if ( err )
+                  if ( err ) {
                     return request._error(
                       null, 'indexeddb.Database.dD.10',
                       'could not remove table "' + name + '.'
                         + '": ' + err);
+                  }
                   sdb.serialize(function() {
-                    for(var i=0; i<rows.length; i++) {
+                    function makeRemoveDatatableErrorReporter (datatable) {
+                      return function(err) {
+                        if ( err ) {
+                          return request._error(
+                            null, 'indexeddb.Database.dD.11',
+                            'could not remove data for "' + datatable + '.'
+                              + '": ' + err);
+                        }
+                      };
+                    }
+                    var i;
+                    for(i=0; i<rows.length; i++) {
                       var datatable = JSON.parse(rows[i].c_meta).table; 
                       sdb.run(
                         'DROP TABLE "' + datatable + '"',
-                        function(err) {
-                          if ( err )
-                            return request._error(
-                              null, 'indexeddb.Database.dD.11',
-                              'could not remove data for "' + datatable + '.'
-                                + '": ' + err);
-                      }); 
+                        makeRemoveDatatableErrorReporter(datatable));
                     }
                     sdb.run(
                       'DELETE FROM "idb.store" WHERE c_dbname = ?',
                       name,
                       function(err) {
-                        if ( err )
+                        if ( err ) {
                           return request._error(
                             null, 'indexeddb.Database.dD.12',
                             'could not remove data for "' + name + '.'
                               + '": ' + err);
-        
+                        }
                     }); 
                     sdb.run(
                       'DELETE FROM "idb.database" WHERE c_name = ?',
                       name,
                       function(err) {
-                        if ( err )
+                        if ( err ) {
                           return request._error(
                             null, 'indexeddb.Database.dD.13',
                             'could not remove data for "' + name + '.'
                               + '": ' + err);
+                        }
                         if ( request.onsuccess ) {
                           request.onsuccess({target: {error: false, errorCode: false}});
                         }
