@@ -39,7 +39,6 @@ include but are not limited to:
 
 * Many non-critical APIs, including:
 
-    * indexedDB.deleteDatabase()
     * indexedDB.cmp()
     * Transaction.abort()
     * Store.deleteIndex()
