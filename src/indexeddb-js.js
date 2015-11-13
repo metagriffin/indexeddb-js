@@ -33,17 +33,14 @@ define(['underscore'], function(_) {'use strict';
     else
       process.nextTick(cb);
   };
+
+  // See http://stackoverflow.com/a/6701665/271577
   var safeName = function(name) {
-    name = escape(name);
-    return name
-      .replace(/_/g, '_5f')
-      .replace(/%/g, '_25')
-      .replace(/\*/g, '_2a')
-      .replace(/@/g, '_40')
-      .replace(/\-/g, '_2d')
-      .replace(/\+/g, '_2b')
-      .replace(/\./g, '_2e')
-      .replace(/\//g, '_2f');
+    // We don't have to escape "sqlite_" as we are creating tables with "idb:" prefix
+    if ((/\u0000/).test(name)) {
+      throw 'NUL characters not allowed.';
+    }
+    return name.replace(/"/g, '""');
   };
 
   //---------------------------------------------------------------------------
