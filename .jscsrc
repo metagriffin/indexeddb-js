@@ -32,7 +32,7 @@
   "disallowKeywords": [],
   "disallowMixedSpacesAndTabs": true,
   "disallowMultiLineTernary": false,
-  "disallowMultipleLineBreaks": true,
+  "disallowMultipleLineBreaks": false,
   "disallowMultipleLineStrings": true,
   "disallowMultipleSpaces": false,
   "disallowMultipleVarDecl": false,
