@@ -17,7 +17,8 @@ define([
   'underscore',
   'sqlite3',
   '../src/indexeddb-js'
-], function(_, sqlite3, indexeddbjs) {'use strict';
+], function(_, sqlite3, indexeddbjs) {
+  'use strict';
 
   describe('indexeddb-js', function() {
 

@@ -18,7 +18,8 @@
 if ( typeof(define) !== 'function')
   var define = require('amdefine')(module);
 
-define(['underscore'], function(_) {'use strict';
+define(['underscore'], function(_) {
+  'use strict';
 
   var exports = {};
 
@@ -934,6 +935,15 @@ define(['underscore'], function(_) {'use strict';
           errorCode: 'indexeddb.Database.T.10'
         });
       return new Transaction(this, stores, mode);
+    };
+
+    //-------------------------------------------------------------------------
+    this.setVersion = function(version) {
+      var req = new Request();
+        defer(function(){req._error(this, 'indexeddb.Database.SV.10',
+                                    'setVersion() has been deprecated in favor of onupgradeneeded');}, this);
+        return req;
+      };
     };
 
     //-------------------------------------------------------------------------
