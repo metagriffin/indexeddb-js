@@ -19,6 +19,7 @@ if ( typeof(define) !== 'function')
   var define = require('amdefine')(module);
 
 define(['underscore'], function(_) {
+  'use strict';
 
   var exports = {};
 
@@ -32,16 +33,6 @@ define(['underscore'], function(_) {
       setTimeout(cb, 0);
     else
       process.nextTick(cb);
-  };
-  var makeID = function() {
-    // shamelessly scrubbed from:
-    //   http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript/2117523#2117523
-    // (adjusted to remove the dashes)
-    // todo: see some of those links on how to make this more "robust"...
-    return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-      return v.toString(16);
-    });
   };
   var safeName = function(name) {
     name = escape(name);
@@ -74,7 +65,7 @@ define(['underscore'], function(_) {
   var Request = function() {
     this._error = function(next, code, message) {
       this.error = '[' + code + '] ' + message;
-      err = new Event(_.extend(this, {error: this.error, errorCode: code}));
+      var err = new Event(_.extend(this, {error: this.error, errorCode: code}));
       // console.log('ERROR: indexedDB.Request: ' + err.target.error);
       this._errpub(next, err);
     };
@@ -104,7 +95,7 @@ define(['underscore'], function(_) {
       if ( ! code )
         return message;
       return '[' + code + '] ' + this.name + ': ' + message;
-    }
+    };
   };
   //   UnknownError
   //   ConstraintError
@@ -120,7 +111,7 @@ define(['underscore'], function(_) {
       if ( ! code )
         return message;
       return '[' + code + '] ' + this.name + ': ' + message;
-    }
+    };
   };
   //   InvalidStateError
   //   InvalidAccessError
@@ -594,7 +585,7 @@ define(['underscore'], function(_) {
     this._getAll = function(request, range, cb, object) {
       this._withEngine(request, function(err, sdb) {
         if ( err )
-          return req._error(this, 'indexeddb.Store.iGA.10',
+          return request._error(this, 'indexeddb.Store.iGA.10',
                             'failed to open a transaction: ' + err);
         if ( range != undefined )
           return cb.call(object,
@@ -791,7 +782,7 @@ define(['underscore'], function(_) {
                     null, 'indexeddb.Database.iL.30',
                     'could not insert new database: ' + err);
                 return self._upgrade(request);
-              })
+              });
           });
       }, this);
     };
@@ -924,12 +915,10 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.setVersion = function(version) {
       var req = new Request();
-      // TODO: implement
-      // todo: is this subject to _upgrading?
-      // console.log('ERROR: indexeddb.Database.setVersion() not implemented...');
-      defer(function(){req._error(this, 'indexeddb.Database.SV.10',
-                                  'setVersion() not implemented');}, this);
-      return req;
+        defer(function(){req._error(this, 'indexeddb.Database.SV.10',
+                                    'setVersion() has been deprecated in favor of onupgradeneeded');}, this);
+        return req;
+      };
     };
 
     //-------------------------------------------------------------------------
@@ -970,64 +959,66 @@ define(['underscore'], function(_) {
     };
 
     this.deleteDatabase = function(name) {
-	      var request = _.extend(new Request(), {
-          onversionchange: null,
-          onupgradeneeded: null,
-          onblocked:       null,
-          onerror:         null,
-          onsuccess:       null,
-          result:          null
+      var request = _.extend(new Request(), {
+        onversionchange: null,
+        onupgradeneeded: null,
+        onblocked:       null,
+        onerror:         null,
+        onsuccess:       null,
+        result:          null
+      });
+      var sdb = this._driver;
+      sdb.all(
+        'SELECT c_meta FROM "idb.store" WHERE c_dbname = ?',
+        name,
+        function(err, rows) {
+          if ( err )
+            return request._error(
+              null, 'indexeddb.Database.dD.10',
+              'could not remove table "' + name + '.'
+                + '": ' + err);
+          sdb.serialize(function() {
+            var getRemoveErrorReporter = function (datatable) {
+              return function (err) {
+                if ( err )
+                  return request._error(
+                    null, 'indexeddb.Database.dD.11',
+                    'could not remove data for "' + datatable + '.'
+                      + '": ' + err);
+              };
+            };
+            for(var i=0; i<rows.length; i++) {
+              var datatable = JSON.parse(rows[i].c_meta).table;
+              sdb.run(
+                'DROP TABLE "' + datatable + '"',
+                getRemoveErrorReporter(datatable));
+            }
+            sdb.run(
+              'DELETE FROM "idb.store" WHERE c_dbname = ?',
+              name,
+              function(err) {
+                if ( err )
+                  return request._error(
+                    null, 'indexeddb.Database.dD.12',
+                    'could not remove data for "' + name + '.'
+                      + '": ' + err);
+
+              });
+            sdb.run(
+              'DELETE FROM "idb.database" WHERE c_name = ?',
+              name,
+              function(err) {
+                if ( err )
+                  return request._error(
+                    null, 'indexeddb.Database.dD.13',
+                    'could not remove data for "' + name + '.'
+                      + '": ' + err);
+                if ( request.onsuccess ) {
+                  request.onsuccess({target: {error: false, errorCode: false}});
+                }
+              });
+          });
         });
-        self = this;
-        var sdb = this._driver;
-              sdb.all(
-                'SELECT c_meta FROM "idb.store" WHERE c_dbname = ?',
-                name,
-                function(err, rows) {
-                  if ( err )
-                    return request._error(
-                      null, 'indexeddb.Database.dD.10',
-                      'could not remove table "' + name + '.'
-                        + '": ' + err);
-                  sdb.serialize(function() {
-                    for(var i=0; i<rows.length; i++) {
-                      var datatable = JSON.parse(rows[i].c_meta).table; 
-                      sdb.run(
-                        'DROP TABLE "' + datatable + '"',
-                        function(err) {
-                          if ( err )
-                            return request._error(
-                              null, 'indexeddb.Database.dD.11',
-                              'could not remove data for "' + datatable + '.'
-                                + '": ' + err);
-                      }); 
-                    }
-                    sdb.run(
-                      'DELETE FROM "idb.store" WHERE c_dbname = ?',
-                      name,
-                      function(err) {
-                        if ( err )
-                          return request._error(
-                            null, 'indexeddb.Database.dD.12',
-                            'could not remove data for "' + name + '.'
-                              + '": ' + err);
-        
-                    }); 
-                    sdb.run(
-                      'DELETE FROM "idb.database" WHERE c_name = ?',
-                      name,
-                      function(err) {
-                        if ( err )
-                          return request._error(
-                            null, 'indexeddb.Database.dD.13',
-                            'could not remove data for "' + name + '.'
-                              + '": ' + err);
-                        if ( request.onsuccess ) {
-                          request.onsuccess({target: {error: false, errorCode: false}});
-                        }
-                    }); 
-                  });
-                });
       return request;
     };
     // todo: implement:

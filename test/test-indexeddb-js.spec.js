@@ -1,3 +1,5 @@
+/*global jasmine, it, expect, describe, beforeEach */
+/*eslint no-magic-numbers: 0, no-console: 0*/
 // -*- coding: utf-8 -*-
 //-----------------------------------------------------------------------------
 // file: $Id$
@@ -16,6 +18,7 @@ define([
   'sqlite3',
   '../src/indexeddb-js'
 ], function(_, sqlite3, indexeddbjs) {
+  'use strict';
 
   describe('indexeddb-js', function() {
 
@@ -101,8 +104,6 @@ define([
 
     //-------------------------------------------------------------------------
     it('creates new tables requested during "onupgradeneeded"', function(done) {
-      var upgraded = false;
-      var opened = false;
       var errorHandler = function(err) {
         expect('error callback call').toBe('never called');
         expect(err).not.toBeDefined();
@@ -331,12 +332,12 @@ define([
           // todo: when Store._getAll supports key ranges...
           // store.count(scope.IDBKeyRange.bound(2, 15)).onsuccess = function(event) {
           //   expect(event.target.result).toBe(2);
-            store.clear().onsuccess = function(event) {
-              store.count().onsuccess = function(event) {
-                expect(event.target.result).toBe(0);
-                done();
-              };
+          store.clear().onsuccess = function(event) {
+            store.count().onsuccess = function(event) {
+              expect(event.target.result).toBe(0);
+              done();
             };
+          };
           // };
         };
       });
@@ -438,7 +439,7 @@ define([
             dataset.push(cursor.value.id + ':' + cursor.value.value);
             return cursor.continue();
           }
-          dataset.sort()
+          dataset.sort();
           expect(dataset).toEqual(['1:foo1', '2:zapper', '3:zapper']);
           dataset = [];
           db.transaction().objectStore('data').index('value').openCursor('zapper')
@@ -449,7 +450,7 @@ define([
                 dataset.push(cursor.value.id + ':' + cursor.value.value);
                 return cursor.continue();
               }
-              dataset.sort()
+              dataset.sort();
               expect(dataset).toEqual(['2:zapper', '3:zapper']);
               done();
             };
@@ -479,7 +480,7 @@ define([
               dataset.push(cursor.value.id + ':' + cursor.value.value);
               return cursor.continue();
             }
-            dataset.sort()
+            dataset.sort();
             expect(dataset).toEqual(['2:zapper', '3:zapper']);
             done();
           };
@@ -508,7 +509,7 @@ define([
               dataset.push(cursor.value.id + ':' + cursor.value.value);
               return cursor.continue();
             }
-            dataset.sort()
+            dataset.sort();
             expect(dataset).toEqual(['1:foo1', '3:zapper']);
             done();
           };
@@ -537,7 +538,7 @@ define([
               dataset.push(cursor.value.id + ':' + cursor.value.value);
               return cursor.continue();
             }
-            dataset.sort()
+            dataset.sort();
             expect(dataset).toEqual(['3:zapper']);
             done();
           };
@@ -566,7 +567,7 @@ define([
               dataset.push(cursor.value.id + ':' + cursor.value.value);
               return cursor.continue();
             }
-            dataset.sort()
+            dataset.sort();
             expect(dataset).toEqual(['1:foo1']);
             done();
           };
@@ -595,7 +596,7 @@ define([
               dataset.push(cursor.value.id + ':' + cursor.value.value);
               return cursor.continue();
             }
-            dataset.sort()
+            dataset.sort();
             expect(dataset).toEqual([]);
             done();
           };
@@ -635,7 +636,7 @@ define([
             done();
           };
         };
-      });      
+      });
     });
 
     //-------------------------------------------------------------------------
@@ -645,12 +646,11 @@ define([
       // example from README.md instead of needing to duplicate it here...
 
       var output = '';
-      var _console = console;
       var console = {
         log: function(msg) {
           output += msg + '\n';
         }
-      }
+      };
       var final_check = function() {
         expect(output).toEqual(
           'record: {"id":1,"value":"my-first-item"}\n'
@@ -663,7 +663,7 @@ define([
         done();
       };
 
-
+// jscs:disable validateIndentation
 var engine    = new sqlite3.Database(':memory:');
 var scope     = indexeddbjs.makeScope('sqlite3', engine);
 var request   = scope.indexedDB.open('MyDatabase');
