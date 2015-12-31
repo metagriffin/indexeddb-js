@@ -175,6 +175,69 @@ define(['underscore'], function(_) {
   };
 
   //---------------------------------------------------------------------------
+  var Cursor = function(source, range, direction, retkey, request) {
+
+    this.source      = source;
+    this.direction   = direction || 'next';
+    // todo: implement these attributes...
+    // this.primaryKey  = ...;
+
+    if ( range && ! ( range instanceof IDBKeyRange ) )
+      range = IDBKeyRange.only(range);
+
+    // -- private attributes
+    this._range    = range;
+    this._request  = request;
+    this._data     = null;
+    this._next     = 0;
+    this._retkey   = retkey;
+    this._error    = function(event) {
+      if ( this.onerror )
+        this.onerror(event);
+      if ( ! event._preventDefault )
+        this.source._error(event);
+    };
+
+    //-------------------------------------------------------------------------
+    this.continue = function() {
+      defer(function() {
+        if ( this.direction != 'next' )
+          return this._request._error(this, 'indexeddb.Cursor.C.5',
+                                      'non-"next" cursor direction not supported');
+        if ( this._data == undefined )
+          return this.source._getAll(this._request, this._range, function(err, rows) {
+            if ( err )
+              return this._request._error(this, 'indexeddb.Cursor.C.10',
+                                          'failed to fetch data for cursor: ' + err);
+            this._data = rows;
+            this._next = 0;
+            this.continue();
+          }, this);
+        if ( this._next >= this._data.length )
+        {
+          if ( this._request.onsuccess )
+            this._request.onsuccess(new Event({result: null}));
+          return;
+        }
+        this.key      = this._data[this._next].key;
+        this.value    = this._data[this._next].value;
+        this.position = this._next;
+        this._next    += 1;
+        if ( this._request.onsuccess )
+          this._request.onsuccess(new Event({result: this}));
+        return;
+      }, this);
+    };
+
+    // todo: implement
+    // this.update = function(value) {};
+    // this.advance = function(count) {};
+    // this.delete = function() {};
+    // this.continuePrimaryKey = function(key, primaryKey) {};
+
+  };
+
+  //---------------------------------------------------------------------------
   var Index = function(store, name) {
     // TODO: implement these attributes...
     // this.keyPath = ...;
@@ -280,69 +343,6 @@ define(['underscore'], function(_) {
   // todo: implement
   // this.getAll = function(query, count) {};
   // this.getAllKeys = function(query, count) {};
-
-  //---------------------------------------------------------------------------
-  var Cursor = function(source, range, direction, retkey, request) {
-
-    this.source      = source;
-    this.direction   = direction || 'next';
-    // todo: implement these attributes...
-    // this.primaryKey  = ...;
-
-    if ( range && ! ( range instanceof IDBKeyRange ) )
-      range = IDBKeyRange.only(range);
-
-    // -- private attributes
-    this._range    = range;
-    this._request  = request;
-    this._data     = null;
-    this._next     = 0;
-    this._retkey   = retkey;
-    this._error    = function(event) {
-      if ( this.onerror )
-        this.onerror(event);
-      if ( ! event._preventDefault )
-        this.source._error(event);
-    };
-
-    //-------------------------------------------------------------------------
-    this.continue = function() {
-      defer(function() {
-        if ( this.direction != 'next' )
-          return this._request._error(this, 'indexeddb.Cursor.C.5',
-                                      'non-"next" cursor direction not supported');
-        if ( this._data == undefined )
-          return this.source._getAll(this._request, this._range, function(err, rows) {
-            if ( err )
-              return this._request._error(this, 'indexeddb.Cursor.C.10',
-                                          'failed to fetch data for cursor: ' + err);
-            this._data = rows;
-            this._next = 0;
-            this.continue();
-          }, this);
-        if ( this._next >= this._data.length )
-        {
-          if ( this._request.onsuccess )
-            this._request.onsuccess(new Event({result: null}));
-          return;
-        }
-        this.key      = this._data[this._next].key;
-        this.value    = this._data[this._next].value;
-        this.position = this._next;
-        this._next    += 1;
-        if ( this._request.onsuccess )
-          this._request.onsuccess(new Event({result: this}));
-        return;
-      }, this);
-    };
-
-    // todo: implement
-    // this.update = function(value) {};
-    // this.advance = function(count) {};
-    // this.delete = function() {};
-    // this.continuePrimaryKey = function(key, primaryKey) {};
-
-  };
 
   //---------------------------------------------------------------------------
   var Store = function(txn, name, options, create) {
