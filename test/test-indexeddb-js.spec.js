@@ -693,6 +693,24 @@ request.run = function() {
     console.log('DATABASE ERROR: ' + event.target.error);
   };
 
+  var play_with_the_index_and_cursors = function() {
+
+    var index = db.transaction(null, 'readwrite').objectStore('data').index('value');
+    var range = scope.IDBKeyRange.only('another object');
+
+    console.log('all objects with the "value" field set to "another object":');
+
+    index.openCursor(range).onsuccess = function(event) {
+      var cursor = event.target.result;
+      if ( ! cursor )
+        return final_check();
+
+      console.log('  - ' + JSON.stringify(cursor.value));
+      cursor.continue();
+    };
+
+  };
+
   // fetch the record with id "1" in store "data"
   var store = db.transaction(null, 'readwrite').objectStore('data');
   store.get('1').onsuccess = function(event) {
@@ -716,24 +734,6 @@ request.run = function() {
         };
       };
     };
-  };
-
-  var play_with_the_index_and_cursors = function() {
-
-    var index = db.transaction(null, 'readwrite').objectStore('data').index('value');
-    var range = scope.IDBKeyRange.only('another object');
-
-    console.log('all objects with the "value" field set to "another object":');
-
-    index.openCursor(range).onsuccess = function(event) {
-      var cursor = event.target.result;
-      if ( ! cursor )
-        return final_check();
-
-      console.log('  - ' + JSON.stringify(cursor.value));
-      cursor.continue();
-    };
-
   };
 
 };

@@ -526,7 +526,7 @@ define(['underscore'], function(_) {
                                 'failed to update object: ' + err);
             if ( this.changes != 1 )
               return req._error(self, 'indexeddb.Store.P.30',
-                                'unexpected number of changes: ' + diff.changes);
+                                'unexpected number of changes: ' + this.changes);
             req.result = key;
             if ( req.onsuccess )
               req.onsuccess(new Event(req));
@@ -940,10 +940,9 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.setVersion = function(version) {
       var req = new Request();
-        defer(function(){req._error(this, 'indexeddb.Database.SV.10',
+      defer(function() {req._error(this, 'indexeddb.Database.SV.10',
                                     'setVersion() has been deprecated in favor of onupgradeneeded');}, this);
-        return req;
-      };
+      return req;
     };
 
     //-------------------------------------------------------------------------
