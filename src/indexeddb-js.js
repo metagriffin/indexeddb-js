@@ -155,6 +155,13 @@ define(['underscore'], function(_) {
     return new IDBKeyRange(lower, upper, lowerOpen, upperOpen);
   };
 
+  IDBKeyRange.prototype.check = function(value) {
+    throw new Event({
+      error: '"IDBKeyRange.check" has been deprecated; please use IDBKeyRange.includes instead',
+      errorCode: 'indexeddb.IDBKeyRange.check.10'
+    });
+  };
+
   //---------------------------------------------------------------------------
   IDBKeyRange.prototype.includes = function(value) {
     if ( this.lower !== undefined )
