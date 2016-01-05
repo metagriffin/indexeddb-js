@@ -50,15 +50,16 @@ define(['underscore'], function(_) {
   //---------------------------------------------------------------------------
   var Event = function(target) {
     this._preventDefault = false;
-    this.preventDefault = function() {
-      this._preventDefault = true;
-    };
     this.target = target;
-    if ( this.target.error && this.target.errorCode )
-      this.toString = function() {
-        return '[' + this.target.errorCode + '] ' + this.target.error;
-      };
     return this;
+  };
+  Event.prototype.preventDefault = function() {
+    this._preventDefault = true;
+  };
+  Event.prototype.toString = function () {
+    if ( this.target.error && this.target.errorCode )
+      return '[' + this.target.errorCode + '] ' + this.target.error;
+    return '[object Event]';
   };
 
   //---------------------------------------------------------------------------
