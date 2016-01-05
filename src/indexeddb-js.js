@@ -50,37 +50,54 @@ define(['underscore'], function(_) {
   //---------------------------------------------------------------------------
   var Event = function(target) {
     this._preventDefault = false;
-    this.preventDefault = function() {
-      this._preventDefault = true;
-    };
     this.target = target;
-    if ( this.target.error && this.target.errorCode )
-      this.toString = function() {
-        return '[' + this.target.errorCode + '] ' + this.target.error;
-      };
     return this;
+  };
+  Event.prototype.preventDefault = function() {
+    this._preventDefault = true;
+  };
+  Event.prototype.toString = function () {
+    if ( this.target.error && this.target.errorCode )
+      return '[' + this.target.errorCode + '] ' + this.target.error;
+    return '[object Event]';
   };
 
   //---------------------------------------------------------------------------
   var Request = function() {
-    this._error = function(next, code, message) {
-      this.error = '[' + code + '] ' + message;
-      var err = new Event(_.extend(this, {error: this.error, errorCode: code}));
-      // console.log('ERROR: indexedDB.Request: ' + err.target.error);
-      this._errpub(next, err);
-    };
-    this._errevt = function(next, err) {
-      this.error = err;
-      err = new Event(_.extend(this, {error: this.error, errorCode: this.error.code}));
-      // console.log('ERROR: indexedDB.Request: ' + err.target.error);
-      this._errpub(next, err);
-    };
-    this._errpub = function(next, err) {
-      if ( this.onerror )
-        this.onerror(err);
-      if ( ! err._preventDefault && next )
-        next._error(err);
-    };
+    // Todo: implement error handlers and EventTarget
+    // this.onsuccess // Todo: Ensure sets req.readyState = 'done';
+    // this.onerror;
+    // Todo: implement attributes
+    // this.transaction
+    // this.source
+    // this.result (already on Index and Store)
+    // Todo: Rename this.error so this.error can be a DOMException
+    this.readyState = 'pending';
+  };
+  Request.prototype._error = function(next, code, message) {
+    this.readyState = 'done';
+    this.error = '[' + code + '] ' + message;
+    var err = new Event(_.extend(this, {error: this.error, errorCode: code}));
+    // console.log('ERROR: indexedDB.Request: ' + err.target.error);
+    this._errpub(next, err);
+  };
+  Request.prototype._errevt = function(next, err) {
+    this.error = err;
+    err = new Event(_.extend(this, {error: this.error, errorCode: this.error.code}));
+    // console.log('ERROR: indexedDB.Request: ' + err.target.error);
+    this._errpub(next, err);
+  };
+  Request.prototype._errpub = function(next, err) {
+    if ( this.onerror )
+      this.onerror(err);
+    if ( ! err._preventDefault && next )
+      next._error(err);
+  };
+
+  var errorStringifier = function() {
+    if ( ! this.code )
+      return this.message;
+    return '[' + this.code + '] ' + this.name + ': ' + this.message;
   };
 
   //---------------------------------------------------------------------------
@@ -91,12 +108,9 @@ define(['underscore'], function(_) {
     this.name = 'VersionError';
     this.code = code;
     this.message = message;
-    this.toString = function() {
-      if ( ! code )
-        return message;
-      return '[' + code + '] ' + this.name + ': ' + message;
-    };
   };
+  exports.VersionError.prototype.toString = errorStringifier;
+
   //   UnknownError
   //   ConstraintError
   //   DataError
@@ -107,12 +121,9 @@ define(['underscore'], function(_) {
     this.name = 'NotFoundError';
     this.code = code;
     this.message = message;
-    this.toString = function() {
-      if ( ! code )
-        return message;
-      return '[' + code + '] ' + this.name + ': ' + message;
-    };
   };
+  exports.NotFoundError.prototype.toString = errorStringifier;
+
   //   InvalidStateError
   //   InvalidAccessError
   //   AbortError
@@ -145,8 +156,15 @@ define(['underscore'], function(_) {
     return new IDBKeyRange(lower, upper, lowerOpen, upperOpen);
   };
 
-  //---------------------------------------------------------------------------
   IDBKeyRange.prototype.check = function(value) {
+    throw new Event({
+      error: '"IDBKeyRange.check" has been deprecated; please use IDBKeyRange.includes instead',
+      errorCode: 'indexeddb.IDBKeyRange.check.10'
+    });
+  };
+
+  //---------------------------------------------------------------------------
+  IDBKeyRange.prototype.includes = function(value) {
     if ( this.lower !== undefined )
     {
       if ( value == this.lower )
@@ -162,6 +180,69 @@ define(['underscore'], function(_) {
         return false;
     }
     return true;
+  };
+
+  //---------------------------------------------------------------------------
+  var Cursor = function(source, range, direction, retkey, request) {
+
+    this.source      = source;
+    this.direction   = direction || 'next';
+    // todo: implement these attributes...
+    // this.primaryKey  = ...;
+
+    if ( range && ! ( range instanceof IDBKeyRange ) )
+      range = IDBKeyRange.only(range);
+
+    // -- private attributes
+    this._range    = range;
+    this._request  = request;
+    this._data     = null;
+    this._next     = 0;
+    this._retkey   = retkey;
+    this._error    = function(event) {
+      if ( this.onerror )
+        this.onerror(event);
+      if ( ! event._preventDefault )
+        this.source._error(event);
+    };
+
+    //-------------------------------------------------------------------------
+    this.continue = function() {
+      defer(function() {
+        if ( this.direction != 'next' )
+          return this._request._error(this, 'indexeddb.Cursor.C.5',
+                                      'non-"next" cursor direction not supported');
+        if ( this._data == undefined )
+          return this.source._getAll(this._request, this._range, function(err, rows) {
+            if ( err )
+              return this._request._error(this, 'indexeddb.Cursor.C.10',
+                                          'failed to fetch data for cursor: ' + err);
+            this._data = rows;
+            this._next = 0;
+            this.continue();
+          }, this);
+        if ( this._next >= this._data.length )
+        {
+          if ( this._request.onsuccess )
+            this._request.onsuccess(new Event({result: null}));
+          return;
+        }
+        this.key      = this._data[this._next].key;
+        this.value    = this._data[this._next].value;
+        this.position = this._next;
+        this._next    += 1;
+        if ( this._request.onsuccess )
+          this._request.onsuccess(new Event({result: this}));
+        return;
+      }, this);
+    };
+
+    // todo: implement
+    // this.update = function(value) {};
+    // this.advance = function(count) {};
+    // this.delete = function() {};
+    // this.continuePrimaryKey = function(key, primaryKey) {};
+
   };
 
   //---------------------------------------------------------------------------
@@ -243,7 +324,7 @@ define(['underscore'], function(_) {
         if ( ! range )
           return cb.call(object, null, objects);
         cb.call(object, null, _.filter(objects, function(e) {
-          return range.check(store._extractValue(e.value, index.keyPath));
+          return range.includes(store._extractValue(e.value, index.keyPath));
         }));
       });
     };
@@ -267,67 +348,9 @@ define(['underscore'], function(_) {
     return this;
   };
 
-  //---------------------------------------------------------------------------
-  var Cursor = function(source, range, direction, retkey, request) {
-
-    this.source      = source;
-    this.direction   = direction || 'next';
-    // todo: implement these attributes...
-    // this.primaryKey  = ...;
-
-    if ( range && ! ( range instanceof IDBKeyRange ) )
-      range = IDBKeyRange.only(range);
-
-    // -- private attributes
-    this._range    = range;
-    this._request  = request;
-    this._data     = null;
-    this._next     = 0;
-    this._retkey   = retkey;
-    this._error    = function(event) {
-      if ( this.onerror )
-        this.onerror(event);
-      if ( ! event._preventDefault )
-        this.source._error(event);
-    };
-
-    //-------------------------------------------------------------------------
-    this.continue = function() {
-      defer(function() {
-        if ( this.direction != 'next' )
-          return this._request._error(this, 'indexeddb.Cursor.C.5',
-                                      'non-"next" cursor direction not supported');
-        if ( this._data == undefined )
-          return this.source._getAll(this._request, this._range, function(err, rows) {
-            if ( err )
-              return this._request._error(this, 'indexeddb.Cursor.C.10',
-                                          'failed to fetch data for cursor: ' + err);
-            this._data = rows;
-            this._next = 0;
-            this.continue();
-          }, this);
-        if ( this._next >= this._data.length )
-        {
-          if ( this._request.onsuccess )
-            this._request.onsuccess(new Event({result: null}));
-          return;
-        }
-        this.key      = this._data[this._next].key;
-        this.value    = this._data[this._next].value;
-        this.position = this._next;
-        this._next    += 1;
-        if ( this._request.onsuccess )
-          this._request.onsuccess(new Event({result: this}));
-        return;
-      }, this);
-    };
-
-    // todo: implement
-    // this.update = function() {};
-    // this.advance = function() {};
-    // this.delete = function() {};
-
-  };
+  // todo: implement
+  // this.getAll = function(query, count) {};
+  // this.getAllKeys = function(query, count) {};
 
   //---------------------------------------------------------------------------
   var Store = function(txn, name, options, create) {
@@ -511,7 +534,7 @@ define(['underscore'], function(_) {
                                 'failed to update object: ' + err);
             if ( this.changes != 1 )
               return req._error(self, 'indexeddb.Store.P.30',
-                                'unexpected number of changes: ' + diff.changes);
+                                'unexpected number of changes: ' + this.changes);
             req.result = key;
             if ( req.onsuccess )
               req.onsuccess(new Event(req));
@@ -628,7 +651,10 @@ define(['underscore'], function(_) {
     };
 
     // todo: implement:
-    // this.deleteIndex = function(key) {};
+    // this.deleteIndex = function(name) {};
+    // this.getKey = function(query) {};
+    // this.getAll = function(query, count) {};
+    // this.getAllKeys = function(query, count) {};
 
   };
 
@@ -637,6 +663,7 @@ define(['underscore'], function(_) {
     this.db              = db;
     this.mode            = mode || 'readonly';
     this.error           = null;
+    // Todo: implement error handlers and EventTarget
     this.onerror         = null;
     this.onabort         = null;
     this.oncomplete      = null;
@@ -660,6 +687,7 @@ define(['underscore'], function(_) {
     this.objectStore = function(name) {
       // todo: check that this store already exists (or that this is a versionchange)
       if ( this._stores.length > 0 && _.indexOf(this._stores, name) == -1 )
+        // Todo: Not asynchronous, so should use different error mechanism
         return (new Request())._error(
           this,
           'indexeddb.Transaction.OS.10',
@@ -668,6 +696,7 @@ define(['underscore'], function(_) {
     };
 
     // todo: implement:
+    // this.objectStoreNames = [];
     // this.abort = function() {};
 
   };
@@ -685,7 +714,11 @@ define(['underscore'], function(_) {
     this.objectStoreNames = [];
 
     //: callback `onerror` used to trap database-specific errors
+    // Todo: implement error handlers and EventTarget
     this.onerror   = null;
+    // this.onabort
+    // this.onclose
+    // this.onversionchange
 
     // -- private attributes
     this._conn     = conn;
@@ -915,10 +948,9 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.setVersion = function(version) {
       var req = new Request();
-        defer(function(){req._error(this, 'indexeddb.Database.SV.10',
+      defer(function() {req._error(this, 'indexeddb.Database.SV.10',
                                     'setVersion() has been deprecated in favor of onupgradeneeded');}, this);
-        return req;
-      };
+      return req;
     };
 
     //-------------------------------------------------------------------------
@@ -947,11 +979,10 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.open = function(name, version) {
       var request = _.extend(new Request(), {
+        // Todo: implement error handlers and EventTarget
         onversionchange: null,
         onupgradeneeded: null,
         onblocked:       null,
-        onerror:         null,
-        onsuccess:       null,
         result:          new Database(this, name, version, false)
       });
       request.result._load(request);
@@ -960,11 +991,10 @@ define(['underscore'], function(_) {
 
     this.deleteDatabase = function(name) {
       var request = _.extend(new Request(), {
+        // Todo: implement error handlers and EventTarget
         onversionchange: null,
         onupgradeneeded: null,
         onblocked:       null,
-        onerror:         null,
-        onsuccess:       null,
         result:          null
       });
       var sdb = this._driver;
@@ -987,6 +1017,7 @@ define(['underscore'], function(_) {
                       + '": ' + err);
               };
             };
+            // Todo: Chain these to avoid onsuccess firing too early?
             for(var i=0; i<rows.length; i++) {
               var datatable = JSON.parse(rows[i].c_meta).table;
               sdb.run(
