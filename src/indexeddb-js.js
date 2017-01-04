@@ -915,10 +915,11 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.setVersion = function(version) {
       var req = new Request();
-        defer(function(){req._error(this, 'indexeddb.Database.SV.10',
-                                    'setVersion() has been deprecated in favor of onupgradeneeded');}, this);
-        return req;
-      };
+      defer(function(){
+        req._error(this, 'indexeddb.Database.SV.10',
+          'setVersion() has been deprecated in favor of onupgradeneeded');
+        }, this);
+      return req;
     };
 
     //-------------------------------------------------------------------------
