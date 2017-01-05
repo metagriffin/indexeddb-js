@@ -765,11 +765,9 @@ define(['underscore'], function(_) {
                         return request._error(
                           null, 'indexeddb.Database.iL.26',
                           'could not update database version: ' + err);
-                      return self._upgrade(request);
+                      return self._upgrade(request, {oldVersion: cur});
                     });
-
                 });
-
               return;
             }
             self.version = self.version || 1;
@@ -788,11 +786,14 @@ define(['underscore'], function(_) {
     };
 
     //-------------------------------------------------------------------------
-    this._upgrade = function(request) {
+    this._upgrade = function(request, options) {
+      var options = options || {};
       var self = this;
       var ret = new Event(request);
       ret.target.transaction = new Transaction(this, [], 'readwrite');
       ret.target.transaction.mode = 'versionchange';
+      if(options.oldVersion)
+        ret.oldVersion = options.oldVersion;
       this._upgrading = [];
       if ( request.onupgradeneeded )
         request.onupgradeneeded(ret);

@@ -170,6 +170,7 @@ define([
         req2.onerror = makeErrorHandler('reuse', 'open2.error', done);
         req2.onupgradeneeded = function(event) {
           var db = event.target.result;
+          expect(event.oldVersion).toEqual(1);
           expect(db.version).toEqual(7);
           expect(event.target.transaction.mode).toEqual('versionchange');
         };
