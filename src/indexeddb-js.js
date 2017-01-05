@@ -765,11 +765,9 @@ define(['underscore'], function(_) {
                         return request._error(
                           null, 'indexeddb.Database.iL.26',
                           'could not update database version: ' + err);
-                      return self._upgrade(request);
+                      return self._upgrade(request, {oldVersion: cur});
                     });
-
                 });
-
               return;
             }
             self.version = self.version || 1;
@@ -788,11 +786,14 @@ define(['underscore'], function(_) {
     };
 
     //-------------------------------------------------------------------------
-    this._upgrade = function(request) {
+    this._upgrade = function(request, options) {
+      var options = options || {};
       var self = this;
       var ret = new Event(request);
       ret.target.transaction = new Transaction(this, [], 'readwrite');
       ret.target.transaction.mode = 'versionchange';
+      if(options.oldVersion)
+        ret.oldVersion = options.oldVersion;
       this._upgrading = [];
       if ( request.onupgradeneeded )
         request.onupgradeneeded(ret);
@@ -915,10 +916,11 @@ define(['underscore'], function(_) {
     //-------------------------------------------------------------------------
     this.setVersion = function(version) {
       var req = new Request();
-        defer(function(){req._error(this, 'indexeddb.Database.SV.10',
-                                    'setVersion() has been deprecated in favor of onupgradeneeded');}, this);
-        return req;
-      };
+      defer(function(){
+        req._error(this, 'indexeddb.Database.SV.10',
+          'setVersion() has been deprecated in favor of onupgradeneeded');
+        }, this);
+      return req;
     };
 
     //-------------------------------------------------------------------------
@@ -942,7 +944,7 @@ define(['underscore'], function(_) {
 
     this.vendor  = 'indexeddb-js';
     // TODO: pull this dynamically from package.json somehow?...
-    this.version = '0.0.14';
+    this.version = '0.0.15';
 
     //-------------------------------------------------------------------------
     this.open = function(name, version) {
